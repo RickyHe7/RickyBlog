@@ -183,6 +183,19 @@ npm run deploy                                       # 以后每次发布
 
 2. **逐项核对线上**（`build + preview` 能过的，线上不一定）
 
+   一条命令即可，不用手动点：
+
+   ```powershell
+   .\scripts\check-live.ps1 -Base https://<你的项目>.pages.dev
+   ```
+
+   它会检查 24 条路由是否可达、404 是否返回 404、canonical / robots / sitemap / rss 里的
+   绝对地址用的是不是你给的域名、Pagefind 索引有没有真的部署上去，最后汇总哪些没过。
+   **它还会确认这个地址确实是你自己的站**（查首页有没有 `#indexCard`）——
+   这一步不是多余的：`rickyblog.pages.dev` 就属于别人的博客。
+
+   手动核对的话看这张表：
+
    | 检查项 | 期望 |
    | --- | --- |
    | `/` | 首页 Banner + 打字机 + `#indexCard` 文章卡片区 |

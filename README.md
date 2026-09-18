@@ -53,7 +53,8 @@ RickyBlog/
 │  ├─ avatar.svg             手写枫叶头像
 │  └─ og-default.png         默认社交分享图（1200×630）
 ├─ scripts/
-│  └─ generate_og_image.py   可选：重新生成分享图（日常构建不需要）
+│  ├─ generate_og_image.py   可选：重新生成分享图（日常构建不需要）
+│  └─ check-live.ps1         线上自检：给个地址，核对全部路由 / SEO / 搜索索引
 └─ src/
    ├─ consts.ts              站名 / 导航 / 社交链接 —— 改配置只改这里
    ├─ content.config.ts      内容集合与 frontmatter 校验规则
