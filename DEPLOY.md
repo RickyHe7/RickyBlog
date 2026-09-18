@@ -19,116 +19,128 @@
 
 ---
 
-## 关键前提：你到底需不需要 Git 仓库？
+## 关键前提：需不需要 Git 仓库？
 
-你之前定的是「不建仓库」。这跟 Cloudflare Pages 的两种接入方式是这么个关系：
+Cloudflare Pages 有两种接入方式，它们对仓库的要求正好相反：
 
 | 接入方式 | 需要 Git 仓库吗 | 谁来构建 | 以后怎么更新 |
 | --- | --- | --- | --- |
-| **Direct Upload**（命令行直传） | **不需要** | 你的电脑 | 重新跑一条命令 |
-| **Git 集成**（Connect to Git） | **必须**（GitHub / GitLab） | Cloudflare 服务器 | 推到主分支即自动部署 |
+| **Git 集成**（Connect to Git） | **必须**（GitHub / GitLab） | Cloudflare 服务器 | `git push` 即自动部署 |
+| Direct Upload（命令行直传） | **不需要** | 你的电脑 | 重新跑一条命令 |
 
-**结论：不建仓库完全可行**，走路线 A。原来的计划（Git 集成）必须建仓库，两者冲突，你选一个。
-
-我建议先用路线 A —— 它不逼你建仓库，也不需要把文章推到公开平台，而且换路线很容易（随时可以改成 Git 集成）。
+**本项目当前走 Git 集成**（见下一节）。代价是必须有一个 GitHub 仓库 —— 也就是说先前「不建仓库」那条决定已作废。
+如果哪天不想再维护仓库，换到 Direct Upload 的成本很低：`npm run deploy` 一条命令的事，两种方式拿到的是同类 `*.pages.dev` 地址。
 
 ---
 
-## 路线 A：Cloudflare Pages · Direct Upload（推荐）
+## 当前选择：路线 B（Git 集成）
 
-### 一次性准备（约 5 分钟）
+> 这一节就是本项目**正在走的路线**。路线 A 保留在下面作为备选。
+>
+> 代价要提前说清楚：路线 B **必须有一个 GitHub 仓库**，也就是说之前「不建仓库」那条决定作废了。
+> 好处是以后写完文章 `git push` 就自动上线，不用在本机跑构建。
 
-1. **注册 Cloudflare 账号**（免费额度对个人博客绰绰有余）：https://dash.cloudflare.com/sign-up
+### 一次性准备
 
-2. **登录 wrangler**（Cloudflare 的官方 CLI，首次会自动下载）：
+**1. 在 GitHub 建仓库**
 
-   ```bash
-   npx --yes wrangler login
-   ```
+浏览器打开 https://github.com/new ，按下表填：
 
-   会自动打开浏览器，点授权页的 **Allow**。
+| 字段 | 建议值 | 说明 |
+| --- | --- | --- |
+| Repository name | `RickyBlog` | 与本地目录同名，好认 |
+| Description | 随便写 | 例如「个人博客：小技巧 / 读书笔记 / 生活记录」 |
+| **Visibility** | **Public** | 见下面说明 |
+| Initialize with README | **不要勾** | 本地已经有 README 和首个提交了，勾了会冲突 |
+| Add .gitignore / license | **都不选** | 同上，本地已经准备好了 |
 
-3. **创建 Pages 项目**（只需一次）：
+**关于 Public 还是 Private：**
 
-   ```bash
-   npx --yes wrangler pages project create ricky-blog
-   ```
+- **Public**：源码公开。你的文章本体在 `src/content/posts/` 里，公开等于文章源码公开（但博客本身也是公开的，所以通常无所谓）。**而且以后要开 Giscus 评论必须是 Public 仓库**，所以推荐 Public。
+- **Private**：源码不公开，Cloudflare 那边需要额外授权 GitHub App 访问私有仓库。功能上没问题，但评论以后得再单独找一个公开仓库。
 
-   `ricky-blog` 会成为你的域名前缀，最终地址形如 `https://ricky-blog.pages.dev`。
-   想换名字就改这一处，同时改 `package.json` 里 `deploy` 脚本的 `--project-name`。
+**2. 把本地代码推上去**
 
-4. **建一个本机 `.env`**（可选，但建议）：
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   然后填 `SITE_URL`。**这一步很关键**，下面单独说。
-
-### 每次发布
+仓库建好后（**空仓库**，不要带任何初始化文件），把页面上显示的仓库地址发我，我来执行推送。
+或者你自己跑：
 
 ```bash
-npm run deploy
+cd C:/Repository/Person/RickyBlog
+git remote add origin https://github.com/RickyHe7/RickyBlog.git   # 换成你的实际地址
+git push -u origin main
 ```
 
-等价于：
+首次推送会弹出浏览器让你登录 GitHub 授权（Git Credential Manager），点确认即可，之后不用再登。
 
-```bash
-npm run build
-npx --yes wrangler pages deploy dist --project-name=ricky-blog
-```
+**3. 在 Cloudflare 里接上**
 
-跑完会打印一个 https 链接，形如 `https://<一串 hash>.ricky-blog.pages.dev`。
-（那串 hash 是本次部署的唯一地址，`https://ricky-blog.pages.dev` 永远指向最新一次。）
+Cloudflare Dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** → 授权并选中 `RickyBlog` 仓库，然后按下表填构建配置：
 
-### ⚠️ Direct Upload 特有的一个坑：环境变量在本机
+| 配置项 | 值 |
+| --- | --- |
+| Production branch | `main` |
+| Framework preset | `Astro` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
 
-这一点和 Git 集成**完全相反**，很多人会踩：
+**4. 在 Pages 里加环境变量**（这一步不能省，因为 `.env` 被 gitignore 了，不会上传）
 
-| | 构建在哪跑 | 环境变量从哪读 | 生产/预览环境变量设在哪 |
+Settings → **Environment variables** → 选 **Production**（要对 Preview 也生效就再加一遍），逐条添加：
+
+| 变量 | 值 | 必填 | 作用 |
 | --- | --- | --- | --- |
-| **Direct Upload** | **你的电脑** | 你本机的 `.env` | 没用 —— 产物是纯静态，HTML 已经生成好了 |
-| Git 集成 | Cloudflare 服务器 | Pages 的 Settings → Environment variables | Pages 控制台 |
+| `NODE_VERSION` | `22` | **必填** | 不设会用默认旧版 Node，Astro 7 直接装不上。项目里已放 `.nvmrc`（内容 `22`），正常情况下会自动生效，但显式设一遍最稳 |
+| `SITE_URL` | 你的真实域名 | **必填** | sitemap / canonical / OG / RSS 的绝对地址都靠它 |
+| `PUBLIC_GISCUS_REPO` | 如 `RickyHe7/RickyBlog` | 可选 | 评论，四个都填才显示 |
+| `PUBLIC_GISCUS_REPO_ID` | giscus.app 上取 | 可选 | 同上 |
+| `PUBLIC_GISCUS_CATEGORY` | 如 `Announcements` | 可选 | 同上 |
+| `PUBLIC_GISCUS_CATEGORY_ID` | giscus.app 上取 | 可选 | 同上 |
+| `PUBLIC_UMAMI_SRC` | 如 `https://cloud.umami.is/script.js` | 可选 | 统计，两个都填才生效 |
+| `PUBLIC_UMAMI_WEBSITE_ID` | Umami 里取 | 可选 | 同上 |
+| `PUBLIC_BUTTONDOWN_USERNAME` | buttondown 用户名 | 可选 | 订阅表单，填了才出现 |
 
-也就是说：Astro 在构建时就把 `PUBLIC_*` 这些值**内联进 HTML**了。所以
+**5. 保存并部署**
 
-> **改了 `.env` 之后必须重新 `npm run deploy`，否则线上还是旧的。**
+Cloudflare 会自动拉代码、装依赖、构建、发布。首次构建大约 1–2 分钟。
 
-具体到本项目：
+### 以后怎么更新
 
-- `SITE_URL` → 影响 sitemap / canonical / OG / RSS 里的绝对地址
-- `PUBLIC_GISCUS_*` → 决定评论区块是否出现
-- `PUBLIC_UMAMI_*` → 决定统计脚本是否注入
-- `PUBLIC_BUTTONDOWN_USERNAME` → 决定订阅表单是否出现
+```bash
+git add -A
+git commit -m "post: 新增一篇文章"
+git push
+```
+
+推完 Cloudflare 自动重新构建。**注意：在 Pages 里改了环境变量，也要手动触发一次重新部署**（Deployments → 最新那条 → Retry deployment），因为变量的值是在构建时被写进 HTML 的。
+
+### 这类方式特有的两个坑
+
+1. **环境变量在 Cloudflare 侧，不在你本机。** 所以本地 `npm run build` 用的是本机 `.env`，线上用的是 Pages 里的值 —— 两边可能不一致。调试线上问题时先怀疑这点。
+2. **构建失败要去看 Pages 的构建日志**，不是你本机的终端。最常见的失败原因就是 `NODE_VERSION` 没设成 22。
 
 ---
 
-## 路线 B：Cloudflare Pages · Git 集成
+## 备选路线：Cloudflare Pages · Direct Upload
 
-只有当你愿意建 GitHub 仓库时才走这条。
+**不需要 Git 仓库**，在你本机构建好再上传。适合「就是不想建仓库」或者只想快速试一下。
 
-1. 在 GitHub 建一个仓库（公开/私有都行）
-2. 本地初始化并推送：
+```bash
+npx --yes wrangler login                             # 一次性
+npx --yes wrangler pages project create ricky-blog   # 一次性
+npm run deploy                                       # 以后每次发布
+```
 
-   ```bash
-   git init && git add -A && git commit -m "init"
-   git branch -M main
-   git remote add origin <你的仓库地址>
-   git push -u origin main
-   ```
+和路线 B 相反的两个点：
 
-3. Cloudflare Dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**，选中该仓库
-4. 构建设置：
+| | Direct Upload | Git 集成（路线 B） |
+| --- | --- | --- |
+| 需要 Git 仓库 | 不需要 | **必须** |
+| 构建在哪跑 | 你的电脑 | Cloudflare 服务器 |
+| 环境变量从哪读 | 你本机 `.env` | Pages 控制台 |
+| 更新方式 | `npm run deploy` | `git push` |
+| 改了环境变量后 | 重新 `npm run deploy` | 在 Pages 里 Retry deployment |
 
-   | 配置项 | 值 |
-   | --- | --- |
-   | Framework preset | `Astro` |
-   | Build command | `npm run build` |
-   | Build output directory | `dist` |
-   | 环境变量 **`NODE_VERSION`** | **`22`** ← 必须加，否则默认旧版 Node，Astro 7 装不上 |
-   | 环境变量 `SITE_URL` 等 | 按需加（`PUBLIC_*` 同理） |
-
-5. 保存并部署。以后 `git push` 到主分支会自动重新构建
+两种方式都得到 `*.pages.dev` 地址，随时可以互相切换。
 
 ---
 

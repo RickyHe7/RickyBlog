@@ -35,9 +35,9 @@ npm run check     # 类型与模板检查（astro check）
 | --- | --- | --- |
 | 手机测移动端布局 | `npm run preview:lan` | 同一 Wi-Fi 下访问 `http://<你的内网IP>:4321` |
 | 临时给同事看一眼 | `npx --yes cloudflared tunnel --url http://localhost:4321` | 临时公网 https 地址 |
-| **正式上线** | `npm run deploy` | 部署到 Cloudflare Pages，拿到长期链接 |
+| **正式上线** | `git push` | Cloudflare Pages 自动构建并发布 |
 
-完整步骤（含 Cloudflare 账号准备、域名绑定、回滚）见 **[DEPLOY.md](./DEPLOY.md)**。
+完整步骤（GitHub 仓库设置、Cloudflare 构建配置、环境变量清单、域名绑定、回滚）见 **[DEPLOY.md](./DEPLOY.md)**。
 
 ## 目录结构
 
@@ -46,7 +46,8 @@ RickyBlog/
 ├─ astro.config.mjs          站点地址、集成、Markdown 处理器、外链插件
 ├─ pagefind.yml              Pagefind 索引配置（排除导航/页脚）
 ├─ .env.example              环境变量示例
-├─ DEPLOY.md                 部署指南（两种接入方式对照、域名绑定、回滚）
+├─ DEPLOY.md                 部署指南（Git 集成 / Direct Upload 对照、域名绑定、回滚）
+├─ .nvmrc                    Node 版本（22），让 Cloudflare 构建与本地一致
 ├─ public/
 │  ├─ favicon.svg            手写枫叶图标
 │  ├─ avatar.svg             手写枫叶头像
@@ -171,25 +172,34 @@ npm run preview
 
 ## 部署
 
+走 **Cloudflare Pages · Git 集成**：推到 GitHub，Cloudflare 自动构建发布。
 **详细步骤在 [DEPLOY.md](./DEPLOY.md)**，这里只给要点。
 
-Cloudflare Pages 有两种接入方式，本项目按 **Direct Upload**（命令行直传）配置 —— 它**不需要 Git 仓库**：
+1. 在 GitHub 建一个仓库（**空仓库**，不要勾 README / gitignore / license）
+2. 本地推送：
 
-```bash
-npx --yes wrangler login                          # 一次性
-npx --yes wrangler pages project create ricky-blog # 一次性
-npm run deploy                                     # 以后每次发布
-```
+   ```bash
+   git remote add origin https://github.com/<你的用户名>/<仓库名>.git
+   git push -u origin main
+   ```
 
-⚠️ **Direct Upload 的两个关键差异**（和 Git 集成相反，容易踩）：
+3. Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git → 选中仓库
+4. 构建设置：Build command `npm run build`，Output directory `dist`，Framework preset `Astro`
+5. **环境变量必须加**（`.env` 被 gitignore 了，不会上传到 Cloudflare）：
 
-1. **构建跑在你自己电脑上**，所以环境变量读的是本机 `.env`，不是在 Pages 控制台里设。
-2. Astro 在构建时就把 `PUBLIC_*` 内联进了 HTML，所以**改完 `.env` 必须重新 `npm run deploy`**。
+   | 变量 | 值 | 必填 |
+   | --- | --- | --- |
+   | `NODE_VERSION` | `22` | **必填**，否则默认旧版 Node，Astro 7 装不上 |
+   | `SITE_URL` | 你的真实域名 | **必填**，sitemap / canonical / OG / RSS 全靠它 |
+   | `PUBLIC_GISCUS_*`、`PUBLIC_UMAMI_*`、`PUBLIC_BUTTONDOWN_USERNAME` | 见 `.env.example` | 可选，不填则对应区块不渲染 |
 
-如果你更想要「push 即自动部署」，改用 Git 集成即可 —— 但那时**必须**在 Pages 里把
-`NODE_VERSION` 设为 `22`，否则默认旧版 Node 装不上 Astro 7。两种方式的对照表见 DEPLOY.md。
+6. 保存并部署。以后 `git push` 即自动重新构建
 
-**上线后别忘了**：把真实域名填回 `SITE_URL` 再部署一次。sitemap / canonical / OG / RSS 全靠它推导绝对地址。
+> 项目里已放 `.nvmrc`（内容 `22`），正常情况 Node 版本会自动对齐；`NODE_VERSION` 是显式保险。
+
+**上线后别忘了**：把真实域名填回 `SITE_URL`。sitemap / canonical / OG / RSS 全靠它推导绝对地址，用占位域名会让搜索引擎收录错的东西。
+
+不想维护仓库的话，也可以改用 Direct Upload（`npm run deploy`，不需要 Git）—— 两种方式的对照表在 DEPLOY.md。
 
 ## 设计系统
 
