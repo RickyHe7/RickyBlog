@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { loadEnv } from 'vite';
 
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
@@ -11,9 +12,41 @@ import tailwindcss from '@tailwindcss/vite';
 
 /**
  * 站点地址 —— 全站唯一的绝对 URL 来源。
- * sitemap / canonical / OG / RSS 全部由它推导，换域名只改这一行（或设置环境变量 SITE_URL）。
+ * sitemap / canonical / OG / RSS 全部由它推导。
+ *
+ * ⚠️ 为什么要显式 loadEnv：
+ * Astro 不会把 .env 注入到「配置文件求值时」的 process.env 里（它只在渲染组件时提供
+ * import.meta.env）。所以只读 process.env.SITE_URL 的话，本地 .env 会被完全忽略 ——
+ * 实测过：.env 里写了 SITE_URL，构建出来的 canonical 仍然是占位域名。
+ *
+ * 因此两条路都要走：
+ *   1. process.env.SITE_URL —— Cloudflare Pages 的环境变量是真实进程环境变量，走这条
+ *   2. loadEnv(...).SITE_URL —— 本地 .env / .env.local，走这条
+ *
+ * 这是 Astro 官方文档推荐的用法（import { loadEnv } from 'vite'）。
  */
-const SITE = process.env.SITE_URL ?? 'https://rickyblog.pages.dev';
+const fileEnv = loadEnv(process.env.NODE_ENV === 'production' ? 'production' : 'development', process.cwd(), '');
+const SITE_URL = (process.env.SITE_URL || fileEnv.SITE_URL || '').trim();
+
+/**
+ * ⚠️ 占位域名，别改成任何真实的 *.pages.dev 地址。
+ *
+ * 这里踩过一次：原本用 `https://rickyblog.pages.dev` 当占位，后来发现 **那个域名属于别人的博客**
+ * （robots.txt 里写着 rickyacc.me）。风险在于一旦忘了设 SITE_URL，
+ * sitemap / canonical / OG / RSS 就会静悄悄指向一个陌生人的站点 —— 比直接坏掉危险得多。
+ *
+ * 所以改用 IANA 保留域名：它永远解析不到真实站点，出问题时表现为「明显不对」而不是「悄悄指错」。
+ */
+const PLACEHOLDER_SITE = 'https://rickyblog.example.com';
+
+if (!SITE_URL) {
+  console.warn(
+    '\n[site] ⚠️  未设置 SITE_URL，已回退到占位域名 ' +
+      PLACEHOLDER_SITE +
+      '\n[site]    这会导致 sitemap / canonical / OG / RSS 指向错误地址。\n' +
+      '[site]    本地：写进 .env ；线上：Cloudflare Pages → Settings → Environment variables。\n'
+  );
+}
 
 /**
  * 外链自动新窗口打开。
@@ -45,7 +78,7 @@ const externalLinks = {
 
 // https://astro.build/config
 export default defineConfig({
-  site: SITE,
+  site: SITE_URL || PLACEHOLDER_SITE,
   trailingSlash: 'ignore',
 
   // 悬停时预取目标页面，几乎零成本地让站内跳转「秒开」

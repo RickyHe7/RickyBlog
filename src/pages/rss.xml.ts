@@ -2,9 +2,8 @@ import rss from '@astrojs/rss';
 import type { APIRoute } from 'astro';
 
 import { SITE } from '../consts';
+import { FALLBACK_ORIGIN } from '../lib/seo';
 import { getPublishedPosts } from '../lib/posts';
-
-const FALLBACK_SITE = 'https://rickyblog.pages.dev';
 
 /**
  * RSS 订阅源。
@@ -19,7 +18,7 @@ export const GET: APIRoute = async (context) => {
   return rss({
     title: `${SITE.name} · ${SITE.tagline}`,
     description: SITE.description,
-    site: context.site ?? FALLBACK_SITE,
+    site: context.site ?? FALLBACK_ORIGIN,
     trailingSlash: false,
     customData: [
       `<language>zh-cn</language>`,

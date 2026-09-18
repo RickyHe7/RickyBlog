@@ -193,6 +193,12 @@ npm run preview
    | `SITE_URL` | 你的真实域名 | **必填**，sitemap / canonical / OG / RSS 全靠它 |
    | `PUBLIC_GISCUS_*`、`PUBLIC_UMAMI_*`、`PUBLIC_BUTTONDOWN_USERNAME` | 见 `.env.example` | 可选，不填则对应区块不渲染 |
 
+   > **别把 `SITE_URL` 填成 `https://rickyblog.pages.dev`** —— 那个域名属于别人的博客（实测确认）。
+   > `SITE_URL` 留空时构建会回退到保留域名 `rickyblog.example.com` 并打警告，不会悄悄指错。
+
+   > 本地构建读 `.env`（靠 `astro.config.mjs` 里的 `loadEnv()`），
+   > 线上构建读 Pages 的环境变量 —— `SITE_URL` 两条路都支持，细节见 DEPLOY.md。
+
 6. 保存并部署。以后 `git push` 即自动重新构建
 
 > 项目里已放 `.nvmrc`（内容 `22`），正常情况 Node 版本会自动对齐；`NODE_VERSION` 是显式保险。

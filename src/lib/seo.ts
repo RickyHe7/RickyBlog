@@ -1,7 +1,17 @@
 import { SITE, SOCIALS } from '../consts';
 import type { Post } from './posts';
 
-const FALLBACK_ORIGIN = 'https://rickyblog.pages.dev/';
+/**
+ * 兜底 origin。
+ *
+ * ⚠️ 必须与 astro.config.mjs 里的 PLACEHOLDER_SITE 保持一致，且**不能**改成任何真实的
+ * `*.pages.dev` 地址 —— `rickyblog.pages.dev` 实际属于别人的博客，
+ * 拿它当兜底会让 canonical / sitemap 悄悄指向陌生人的站点。
+ * 用 IANA 保留域名，坏掉时是显性的。
+ *
+ * 正常情况下 Astro.site 一定有值（astro.config.mjs 里设了 site），这里只是防御性兜底。
+ */
+export const FALLBACK_ORIGIN = 'https://rickyblog.example.com/';
 
 /** 把站内路径拼成绝对 URL。sitemap / canonical / OG / RSS 全走这里，保证一致。 */
 export function absoluteUrl(path: string, site: URL | undefined): string {

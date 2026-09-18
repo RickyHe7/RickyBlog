@@ -100,6 +100,33 @@ Settings → **Environment variables** → 选 **Production**（要对 Preview �
 | `PUBLIC_UMAMI_WEBSITE_ID` | Umami 里取 | 可选 | 同上 |
 | `PUBLIC_BUTTONDOWN_USERNAME` | buttondown 用户名 | 可选 | 订阅表单，填了才出现 |
 
+> ### ⚠️ 关于项目名：`rickyblog.pages.dev` 已经被别人占了
+>
+> 实测过：`https://rickyblog.pages.dev` 返回 200，但**那不是我们的站** ——
+> 它的 `robots.txt` 里写着 `https://rickyacc.me/sitemap-index.xml`，所有路径都返回同一个页面。
+> 也就是说，别人早先建了一个叫 `rickyblog` 的 Pages 项目。
+>
+> 两个后果：
+> 1. Cloudflare 里创建项目时如果名字已被占用，它会给你加后缀（形如 `rickyblog-a1b.pages.dev`）或直接拒绝。
+>    建好后**务必用 Dashboard 里显示的完整地址**，别照着 `rickyblog.pages.dev` 填。
+> 2. 别把 `SITE_URL` 填成 `https://rickyblog.pages.dev` —— 那会把你的 canonical / sitemap 指向陌生人的站点。
+>
+> 早期版本 `astro.config.mjs` 就是拿这个域名当占位值，已经改掉了：现在回退用 IANA 保留域名
+> `https://rickyblog.example.com`，它永远解析不到真实站点，并会在构建时打一段醒目警告 ——
+> 出问题时表现为「明显不对」而不是「悄悄指错」。
+
+> ### ⚠️ `SITE_URL` 的两种来源（本地 vs 线上不一样）
+>
+> | 环境 | 从哪里读 | 说明 |
+> | --- | --- | --- |
+> | Cloudflare 构建 | `process.env.SITE_URL` | Pages 里的环境变量是真实进程环境变量 |
+> | 本机构建 | `.env` 文件 | 靠 `astro.config.mjs` 里的 `loadEnv()` 读 |
+>
+> 为什么特意提这个：**Astro 不会把 `.env` 注入到配置文件求值时的 `process.env`**，
+> 它只在渲染组件时提供 `import.meta.env`。所以如果 `astro.config.mjs` 里只写
+> `process.env.SITE_URL`，本地 `.env` 会被完全忽略 —— 实测过，`.env` 里写了值，
+> 构建出来的 canonical 仍然是占位域名。现在两条路都接了，本地和线上都能正确生效。
+
 **5. 保存并部署**
 
 Cloudflare 会自动拉代码、装依赖、构建、发布。首次构建大约 1–2 分钟。
