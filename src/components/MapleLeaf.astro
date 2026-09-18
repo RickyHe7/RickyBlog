@@ -1,0 +1,45 @@
+---
+/**
+ * 枫叶图形 —— 全站唯一的枫叶路径定义。
+ *
+ * 形状说明：5 裂片 + 叶柄，24×24 坐标系。相邻顶点之间用二次贝塞尔连接，
+ * 叶尖相邻的段向外凸起（系数 0.192），所以裂片饱满但叶尖仍然是尖的 ——
+ * 这条曲线是反复渲染比对后定下来的，不要随手改成直边多边形，
+ * 那种做法在视觉上会退化成「星星」。
+ *
+ * 需要同步的地方（SVG 文件无法 import，只能内联同一份路径）：
+ *   - public/favicon.svg
+ *   - public/avatar.svg
+ *   - scripts/generate_og_image.py（用采样多边形，Pillow 画贝塞尔）
+ *   - src/components/Icon.astro 里的 leaf / leafOutline 图标
+ */
+interface Props {
+  size?: number;
+  class?: string;
+  style?: string;
+  /** 传了就作为有语义的图片（带 aria-label），不传则是纯装饰 */
+  label?: string;
+}
+
+const { size = 20, class: className = '', style, label } = Astro.props;
+
+export const LEAF_PATH =
+  'M12.00 0.60Q12.98 3.15 13.63 8.95Q17.71 6.44 19.97 5.92Q19.06 8.04 15.88 11.63Q20.26 13.08 22.05 14.37Q19.91 16.39 15.21 17.19L12.90 19.40L12.90 23.40L11.10 23.40L11.10 19.40L8.79 17.19Q4.09 16.39 1.95 14.37Q3.74 13.08 8.12 11.63Q4.94 8.04 4.03 5.92Q6.29 6.44 10.37 8.95Q11.02 3.15 12.00 0.60Z';
+
+const decorative = !label;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  class={className}
+  style={style}
+  fill="currentColor"
+  role={decorative ? undefined : 'img'}
+  aria-hidden={decorative ? 'true' : undefined}
+  aria-label={label}
+>
+  <path d={LEAF_PATH}></path>
+</svg>

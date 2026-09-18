@@ -1,0 +1,243 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import TOC from '../components/TOC.astro';
+import PrevNext from '../components/PrevNext.astro';
+import Comments from '../components/Comments.astro';
+import Icon from '../components/Icon.astro';
+import { SITE } from '../consts';
+import { formatDate, getReadingTime } from '../lib/format';
+import type { Post } from '../lib/posts';
+import { type JsonLd } from '../lib/seo';
+
+interface Props {
+  post: Post;
+  headings: { depth: number; slug: string; text: string }[];
+  prev?: Post;
+  next?: Post;
+  seriesPosts?: Post[];
+  jsonLd?: JsonLd[];
+  readingMinutes?: number;
+}
+
+const {
+  post,
+  headings,
+  prev,
+  next,
+  seriesPosts = [],
+  jsonLd = [],
+  readingMinutes,
+} = Astro.props;
+
+const { data, id } = post;
+const minutes = readingMinutes ?? getReadingTime(post.body).minutes;
+const hasUpdate = Boolean(data.updated && data.updated.valueOf() !== data.date.valueOf());
+---
+
+<BaseLayout
+  title={data.title}
+  description={data.description}
+  image={data.cover}
+  type="article"
+  publishedTime={data.date}
+  modifiedTime={data.updated ?? data.date}
+  tags={data.tags}
+  jsonLd={jsonLd}
+>
+  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem]">
+      <!--
+        data-pagefind-body：Pagefind 只索引带这个属性的区域，
+        且没有该属性的页面会被整体跳过。因为页面上有它，
+        nav / footer / 上下篇 / 评论区都通过 data-pagefind-ignore 排除了。
+      -->
+      <article class="min-w-0" data-pagefind-body>
+        <!-- 面包屑 -->
+        <nav aria-label="面包屑" class="mb-6 text-xs text-bark-500 dark:text-night-400">
+          <ol class="flex flex-wrap items-center gap-1.5">
+            <li><a href="/" class="hover:text-maple-700 dark:hover:text-maple-300">首页</a></li>
+            <li aria-hidden="true" class="opacity-50">/</li>
+            <li>
+              <a href="/posts" class="hover:text-maple-700 dark:hover:text-maple-300">文章</a>
+            </li>
+            <li aria-hidden="true" class="opacity-50">/</li>
+            <li>
+              <a
+                href={`/categories/${encodeURIComponent(data.category)}`}
+                class="hover:text-maple-700 dark:hover:text-maple-300"
+              >
+                {data.category}
+              </a>
+            </li>
+          </ol>
+        </nav>
+
+        <header class="max-w-3xl">
+          {data.series && (
+            <p
+              class="mb-3 inline-flex items-center gap-1.5 rounded-full border border-ginkgo-400/60 bg-ginkgo-400/10 px-3 py-1 text-xs font-medium text-ginkgo-600"
+            >
+              <Icon name="book" size={13} />
+              系列：{data.series}
+              {data.seriesOrder ? <span class="opacity-70">· 第 {data.seriesOrder} 篇</span> : null}
+            </p>
+          )}
+
+          <h1
+            class="text-2xl font-bold leading-tight tracking-tight text-bark-900 sm:text-4xl dark:text-night-100"
+          >
+            {data.title}
+          </h1>
+
+          <p class="mt-3 text-base leading-relaxed text-bark-500 dark:text-night-400">
+            {data.description}
+          </p>
+
+          <div
+            class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-bark-500 dark:text-night-400"
+          >
+            <span class="inline-flex items-center gap-1.5">
+              <Icon name="calendar" size={13} />
+              <time datetime={data.date.toISOString()} class="tabular-nums">
+                {formatDate(data.date)}
+              </time>
+            </span>
+            {hasUpdate && (
+              <span class="inline-flex items-center gap-1.5">
+                <Icon name="clock" size={13} />
+                <span class="tabular-nums">更新于 {formatDate(data.updated!)}</span>
+              </span>
+            )}
+            <span class="inline-flex items-center gap-1.5">
+              <Icon name="clock" size={13} />
+              <span class="tabular-nums">约 {minutes} 分钟</span>
+            </span>
+            <a
+              href={`/categories/${encodeURIComponent(data.category)}`}
+              class="inline-flex items-center gap-1.5 hover:text-maple-700 dark:hover:text-maple-300"
+            >
+              <Icon name="folder" size={13} />
+              {data.category}
+            </a>
+          </div>
+
+          {
+            data.tags.length > 0 && (
+              <ul class="mt-4 flex flex-wrap gap-1.5">
+                {data.tags.map((tag) => (
+                  <li>
+                    <a
+                      href={`/tags/${encodeURIComponent(tag)}`}
+                      class="inline-flex items-center gap-1 rounded-full border border-paper-300 bg-white/60 px-2.5 py-1 text-xs text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:bg-maple-50 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:bg-night-700 dark:hover:text-maple-300"
+                    >
+                      <Icon name="hash" size={11} />
+                      {tag}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+
+          <!-- 秋色分隔线 -->
+          <div
+            class="mt-7 h-[3px] w-20 rounded-full bg-gradient-to-r from-ginkgo-400 via-maple-500 to-crimson-500"
+            aria-hidden="true"
+          >
+          </div>
+        </header>
+
+        <!-- 移动端目录 -->
+        <TOC headings={headings} variant="inline" class="mt-7" />
+
+        <!-- 正文 -->
+        <div
+          class="prose prose-leaf mt-8 max-w-none prose-headings:scroll-mt-24 prose-a:underline prose-a:decoration-maple-300 prose-a:decoration-1 prose-a:underline-offset-2 hover:prose-a:decoration-maple-500 dark:prose-a:decoration-maple-800"
+        >
+          <slot />
+        </div>
+
+        <PrevNext prev={prev} next={next} series={data.series} />
+
+        <!-- 系列导航 -->
+        {
+          seriesPosts.length > 1 && (
+            <section
+              class="mt-10 rounded-leaf border border-paper-200 bg-paper-100/70 p-5 dark:border-night-700 dark:bg-night-800/60"
+              aria-label={`系列「${data.series}」目录`}
+              data-pagefind-ignore
+            >
+              <h2 class="flex items-center gap-1.5 text-sm font-semibold text-bark-900 dark:text-night-100">
+                <Icon name="book" size={15} />
+                「{data.series}」全部 {seriesPosts.length} 篇
+              </h2>
+              <ol class="mt-3 space-y-1.5">
+                {seriesPosts.map((item, index) => (
+                  <li class="flex items-baseline gap-2 text-sm">
+                    <span class="w-5 shrink-0 tabular-nums text-xs text-bark-500 dark:text-night-400">
+                      {index + 1}.
+                    </span>
+                    {item.id === id ? (
+                      <span class="font-medium text-maple-800 dark:text-maple-300">
+                        {item.data.title}
+                        <span class="ml-1 text-xs opacity-70">（当前）</span>
+                      </span>
+                    ) : (
+                      <a
+                        href={`/posts/${item.id}`}
+                        class="text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+                      >
+                        {item.data.title}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )
+        }
+
+        <Comments />
+      </article>
+
+      <!-- 桌面端右栏 -->
+      <div class="hidden lg:block">
+        <div class="sticky top-20 space-y-6">
+          <TOC headings={headings} variant="sticky" />
+          <section
+            class="rounded-leaf border border-paper-200 bg-white/70 p-4 text-center dark:border-night-700 dark:bg-night-800/60"
+          >
+            <img
+              src="/avatar.svg"
+              alt=""
+              width="56"
+              height="56"
+              loading="lazy"
+              decoding="async"
+              class="mx-auto rounded-full ring-2 ring-maple-100 dark:ring-night-700"
+              style="height:3.5rem;width:3.5rem"
+            />
+            <p class="mt-2.5 text-sm font-medium text-bark-900 dark:text-night-100">{SITE.author}</p>
+            <p class="mt-1 text-xs leading-relaxed text-bark-500 dark:text-night-400">
+              {SITE.tagline}
+            </p>
+            <a
+              href="/about"
+              class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
+            >
+              关于我
+              <Icon name="chevron-right" size={12} />
+            </a>
+          </section>
+          <a
+            href="/posts"
+            class="flex items-center justify-center gap-1.5 rounded-leaf border border-paper-200 bg-white/70 px-4 py-2.5 text-sm text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-700 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+          >
+            <Icon name="list" size={14} />
+            返回文章列表
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

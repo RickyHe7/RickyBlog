@@ -1,0 +1,33 @@
+---
+import ListLayout from '../layouts/ListLayout.astro';
+import SearchBox from '../components/SearchBox.astro';
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+---
+
+<ListLayout
+  title="搜索"
+  description="输入关键词即可检索全部文章的正文。索引由 Pagefind 在构建时生成，检索完全在你的浏览器里完成 —— 没有服务端，也不会把查询词发出去。"
+  posts={posts}
+  jsonLd={[{ '@context': 'https://schema.org', '@type': 'WebPage', name: '站内搜索' }]}
+>
+  <div class="mb-2">
+    <SearchBox />
+  </div>
+
+  <p class="mt-6 text-xs text-bark-500 dark:text-night-400">
+    快捷键：在任意页面按 <kbd
+      class="rounded border border-paper-300 bg-white px-1.5 py-0.5 font-sans text-[0.7rem] dark:border-night-600 dark:bg-night-800"
+      >⌘</kbd
+    >
+    / <kbd
+      class="rounded border border-paper-300 bg-white px-1.5 py-0.5 font-sans text-[0.7rem] dark:border-night-600 dark:bg-night-800"
+      >Ctrl</kbd
+    >
+    + <kbd
+      class="rounded border border-paper-300 bg-white px-1.5 py-0.5 font-sans text-[0.7rem] dark:border-night-600 dark:bg-night-800"
+      >K</kbd
+    > 可以直接跳到这个页面。
+  </p>
+</ListLayout>

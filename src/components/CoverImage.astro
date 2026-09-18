@@ -1,0 +1,103 @@
+---
+import { Image } from 'astro:assets';
+import MapleLeaf from './MapleLeaf.astro';
+
+/**
+ * 封面图组件。三种情况自动降级：
+ *
+ *   1. cover 指向 src/assets/ 下的图片 → 交给 Astro <Image> 做真正的优化
+ *      （生成 WebP/AVIF、多尺寸 srcset、按需压缩）。frontmatter 里写
+ *      `cover: "my-post.jpg"` 或 `cover: "assets/my-post.jpg"` 都认。
+ *   2. cover 指向 public/ 下的静态路径（以 / 开头）→ 普通 <img>，
+ *      显式宽高 + 懒加载，避免布局偏移。
+ *   3. 没有 cover → 用纯 CSS 渐变 + 枫叶水印生成一张「秋叶封面」，
+ *      零图片请求、零版权风险，且同一篇文章永远得到同一张（按标题散列取色）。
+ */
+interface Props {
+  src?: string;
+  alt: string;
+  seed?: string;
+  class?: string;
+  widths?: number[];
+  sizes?: string;
+  loading?: 'lazy' | 'eager';
+}
+
+const {
+  src,
+  alt,
+  seed = alt,
+  class: className = '',
+  widths = [480, 800, 1200],
+  sizes = '(min-width: 1024px) 768px, 100vw',
+  loading = 'lazy',
+} = Astro.props;
+
+// 构建期把 src/assets 下的图片全部登记成 ImageMetadata
+const ASSETS = import.meta.glob<{ default: ImageMetadata }>(
+  '/src/assets/**/*.{jpeg,jpg,png,webp,avif,gif}',
+  { eager: true }
+);
+
+function resolveAsset(path: string) {
+  const normalized = path.replace(/^\/?src\/assets\//, '').replace(/^assets\//, '');
+  const candidates = [`/src/assets/${normalized}`, `/src/assets/${path.replace(/^\//, '')}`];
+  for (const key of candidates) {
+    if (ASSETS[key]) return ASSETS[key].default;
+  }
+  return undefined;
+}
+
+const isPublicPath = Boolean(src && src.startsWith('/'));
+const asset = src && !isPublicPath ? resolveAsset(src) : undefined;
+
+// --- 占位封面：按 seed 取一组固定的秋色渐变 ---
+const GRADIENTS = [
+  'from-ginkgo-400 via-maple-400 to-maple-600',
+  'from-maple-300 via-maple-500 to-crimson-500',
+  'from-ginkgo-300 via-ginkgo-500 to-maple-600',
+  'from-crimson-400 via-maple-500 to-maple-700',
+  'from-maple-400 via-crimson-400 to-maple-800',
+  'from-ginkgo-400 via-crimson-400 to-maple-700',
+];
+
+let hash = 0;
+for (const char of seed) {
+  hash = (hash * 31 + char.codePointAt(0)!) % 100000;
+}
+const gradient = GRADIENTS[hash % GRADIENTS.length];
+---
+
+{
+  asset ? (
+    <Image
+      src={asset}
+      alt={alt}
+      widths={widths}
+      sizes={sizes}
+      loading={loading}
+      decoding="async"
+      class={`h-full w-full object-cover ${className}`}
+    />
+  ) : isPublicPath ? (
+    <img
+      src={src}
+      alt={alt}
+      width="1200"
+      height="630"
+      loading={loading}
+      decoding="async"
+      class={`h-full w-full object-cover ${className}`}
+    />
+  ) : (
+    <div
+      class={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradient} ${className}`}
+      aria-hidden="true"
+    >
+      <MapleLeaf
+        size={64}
+        class="text-white/25 transition-transform duration-500 group-hover:rotate-12"
+      />
+    </div>
+  )
+}

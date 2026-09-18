@@ -1,0 +1,77 @@
+---
+import ListLayout from '../layouts/ListLayout.astro';
+import Newsletter from '../components/Newsletter.astro';
+import Icon from '../components/Icon.astro';
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+---
+
+<ListLayout
+  title="订阅"
+  description="两种方式：RSS 或邮件。更新随缘，不会频繁打扰。"
+  posts={posts}
+>
+  <div class="space-y-6">
+    <!-- RSS -->
+    <section class="rounded-leaf border border-paper-200 bg-white/80 p-5 dark:border-night-700 dark:bg-night-800/70">
+      <h2 class="flex items-center gap-2 text-base font-semibold text-bark-900 dark:text-night-100">
+        <Icon name="rss" size={17} class="text-maple-500" />
+        RSS
+      </h2>
+      <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">
+        推荐方式。没有邮箱泄露风险，也不用担心退订流程。任何 RSS 阅读器（Feedly、Inoreader、NetNewsWire、Reeder…）都能订阅。
+      </p>
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <a
+          href="/rss.xml"
+          class="inline-flex items-center gap-1.5 rounded-lg bg-maple-600 px-3.5 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-maple-700"
+        >
+          <Icon name="rss" size={14} />
+          订阅地址
+        </a>
+        <code
+          class="select-all rounded-lg border border-paper-300 bg-paper-100 px-2.5 py-2 font-mono text-xs text-bark-700 dark:border-night-600 dark:bg-night-900 dark:text-night-400"
+        >
+          /rss.xml
+        </code>
+      </div>
+    </section>
+
+    <!-- 邮件 -->
+    <section class="rounded-leaf border border-paper-200 bg-white/80 p-5 dark:border-night-700 dark:bg-night-800/70">
+      <h2 class="flex items-center gap-2 text-base font-semibold text-bark-900 dark:text-night-100">
+        <Icon name="send" size={17} class="text-maple-500" />
+        邮件订阅
+      </h2>
+      <p class="mt-2 mb-4 text-sm leading-relaxed text-bark-500 dark:text-night-400">
+        有新文章时发一封邮件。只在真的写了东西的时候发，不写就不发。
+      </p>
+      <Newsletter mode="page" />
+    </section>
+
+    <!-- 其它入口 -->
+    <section class="rounded-leaf border border-paper-200 bg-paper-100/70 p-5 dark:border-night-700 dark:bg-night-800/50">
+      <h2 class="text-sm font-semibold text-bark-900 dark:text-night-100">不想订阅？</h2>
+      <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">
+        直接来看也行 —— 不会有弹窗、不会有遮罩、不会有「加入我们」的浮层。
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <a
+          href="/posts"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/70 px-3.5 py-2 text-sm text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+        >
+          <Icon name="list" size={14} />
+          文章列表
+        </a>
+        <a
+          href="/archives"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/70 px-3.5 py-2 text-sm text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+        >
+          <Icon name="calendar" size={14} />
+          归档
+        </a>
+      </div>
+    </section>
+  </div>
+</ListLayout>

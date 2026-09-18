@@ -1,0 +1,59 @@
+---
+import '../styles/global.css';
+
+import Analytics from '../components/Analytics.astro';
+import BaseHead from '../components/BaseHead.astro';
+import FallingLeaves from '../components/FallingLeaves.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import type { JsonLd } from '../lib/seo';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  modifiedTime?: Date;
+  tags?: string[];
+  noindex?: boolean;
+  jsonLd?: JsonLd[];
+  /** 关掉背景落叶（例如 404 页更有意境的克制感） */
+  leaves?: boolean;
+}
+
+const { leaves = true, ...head } = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN" class="h-full">
+  <head>
+    <BaseHead {...head} />
+  </head>
+  <body
+    class="flex min-h-full flex-col bg-paper-100 text-bark-900 antialiased selection:bg-maple-200 dark:bg-night-900 dark:text-night-100"
+  >
+    <!-- 键盘用户的第一个 Tab 落点 -->
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-maple-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+    >
+      跳到主要内容
+    </a>
+
+    {leaves && <FallingLeaves />}
+
+    <!--
+      z-10 让内容盖在落叶层之上；落叶层是 pointer-events:none，所以不会挡交互。
+    -->
+    <div class="relative z-10 flex min-h-screen flex-col">
+      <Header />
+      <main id="main" class="flex-1">
+        <slot />
+      </main>
+      <Footer />
+    </div>
+
+    <Analytics />
+  </body>
+</html>

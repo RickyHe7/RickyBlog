@@ -1,0 +1,77 @@
+---
+import Icon from './Icon.astro';
+
+/**
+ * 邮件订阅：Buttondown。
+ *
+ * 未配置用户名时不会伪造表单，而是显示一段如实说明 + RSS 替代方案。
+ * 启用：.env 里设置 PUBLIC_BUTTONDOWN_USERNAME=你的用户名。
+ */
+interface Props {
+  mode?: 'card' | 'page';
+}
+
+const { mode = 'card' } = Astro.props;
+const username = import.meta.env.PUBLIC_BUTTONDOWN_USERNAME;
+const enabled = Boolean(username);
+---
+
+{
+  enabled ? (
+    <form
+      action={`https://buttondown.com/api/emails/embed-subscribe/${username}`}
+      method="post"
+      class="flex flex-col gap-2 sm:flex-row"
+      aria-label="邮件订阅"
+    >
+      <label class="sr-only" for="newsletter-email">
+        邮箱地址
+      </label>
+      <input
+        id="newsletter-email"
+        type="email"
+        name="email"
+        required
+        autocomplete="email"
+        placeholder="you@example.com"
+        class="min-w-0 flex-1 rounded-lg border border-paper-300 bg-white px-3 py-2 text-sm text-bark-900 placeholder:text-bark-500/60 focus:border-maple-400 dark:border-night-600 dark:bg-night-900 dark:text-night-100 dark:placeholder:text-night-400/60"
+      />
+      <input type="hidden" name="embed" value="1" />
+      <button
+        type="submit"
+        class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-maple-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-maple-700"
+      >
+        <Icon name="send" size={14} />
+        订阅
+      </button>
+    </form>
+  ) : (
+    <div
+      class:list={[
+        'rounded-leaf border border-dashed border-paper-300 bg-paper-100/60 p-4 dark:border-night-600 dark:bg-night-800/50',
+        mode === 'page' && 'p-6',
+      ]}
+    >
+      <p class="flex items-center gap-1.5 text-sm font-medium text-bark-700 dark:text-night-100">
+        <Icon name="send" size={15} />
+        邮件订阅尚未启用
+      </p>
+      <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">
+        站主还没接入 Buttondown。在环境变量里设置
+        <code class="mx-1 rounded bg-paper-200 px-1.5 py-0.5 font-mono text-xs dark:bg-night-700"
+          >PUBLIC_BUTTONDOWN_USERNAME</code
+        >之后，这里会自动变成一个订阅表单。
+      </p>
+      <p class="mt-3 text-sm text-bark-500 dark:text-night-400">
+        在那之前，推荐用 RSS：
+        <a
+          href="/rss.xml"
+          class="inline-flex items-center gap-1 font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
+        >
+          <Icon name="rss" size={13} />
+          订阅 RSS
+        </a>
+      </p>
+    </div>
+  )
+}

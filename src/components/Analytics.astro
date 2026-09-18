@@ -1,0 +1,21 @@
+---
+/**
+ * 访问统计：Umami。
+ *
+ * 配置留空则不注入任何脚本 —— 保证本地开发和未配置环境下
+ * 不会向第三方发起请求，控制台也不会出现 404。
+ *
+ * 启用：在 .env 里填 PUBLIC_UMAMI_SRC 与 PUBLIC_UMAMI_WEBSITE_ID。
+ *   Umami Cloud → src 用 https://cloud.umami.is/script.js
+ *   自建        → src 用你自己的 https://your-domain/script.js
+ */
+const src = import.meta.env.PUBLIC_UMAMI_SRC;
+const websiteId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
+const enabled = Boolean(src && websiteId);
+---
+
+{
+  enabled ? (
+    <script is:inline src={src} data-website-id={websiteId} defer />
+  ) : null
+}

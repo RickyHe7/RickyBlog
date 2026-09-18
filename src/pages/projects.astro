@@ -1,0 +1,118 @@
+---
+import ListLayout from '../layouts/ListLayout.astro';
+import Icon from '../components/Icon.astro';
+import PlaceholderNote from '../components/PlaceholderNote.astro';
+import { PROJECTS } from '../data/optional';
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+const projects = [...PROJECTS].sort(
+  (a, b) => (a.order ?? 99) - (b.order ?? 99) || a.title.localeCompare(b.title, 'zh-CN')
+);
+
+const statusStyle: Record<string, string> = {
+  进行中: 'border-ginkgo-500/70 bg-ginkgo-400/10 text-ginkgo-600',
+  已上线:
+    'border-maple-400/70 bg-maple-100 text-maple-800 dark:border-maple-700 dark:bg-night-700 dark:text-maple-300',
+  已归档:
+    'border-paper-300 bg-paper-200 text-bark-500 dark:border-night-600 dark:bg-night-700 dark:text-night-400',
+};
+---
+
+<ListLayout
+  title="项目"
+  description="做过的东西，以及它们解决了什么问题。"
+  posts={posts}
+>
+  {
+    projects.length === 0 ? (
+      <PlaceholderNote
+        title="还没有添加项目"
+        message="这个页面的数据结构已经接好了，但内容必须由本人提供 —— 项目名、时间线、技术栈这些我无法代为编造。添加方式：编辑 src/data/optional.ts 里的 PROJECTS 数组。"
+        items={[
+          '必填 title 与 description；link / repo / tech / period / status / order 都是可选',
+          'tech 是字符串数组，order 数字小的排前面',
+          '不想让人误认成真实项目时，加 sample: true，页面会明确标注为示例条目',
+          '要写长篇复盘的话，更适合发一篇分类为「项目复盘」的文章，而不是塞进这张卡片',
+        ]}
+      />
+    ) : (
+      <ul class="space-y-4">
+        {projects.map((project) => (
+          <li>
+            <article class="card-lift rounded-leaf border border-paper-200 bg-white/80 p-5 hover:border-maple-300 dark:border-night-700 dark:bg-night-800/70 dark:hover:border-maple-800">
+              {project.sample && (
+                <p class="mb-2 inline-flex items-center gap-1.5 rounded-full border border-crimson-400/60 bg-crimson-400/10 px-2.5 py-0.5 text-xs text-crimson-500">
+                  <Icon name="leaf" size={12} />
+                  示例条目，不是真实项目
+                </p>
+              )}
+
+              <div class="flex flex-wrap items-baseline justify-between gap-3">
+                <h2 class="text-lg font-semibold text-bark-900 dark:text-night-100">
+                  {project.title}
+                </h2>
+                <div class="flex flex-wrap items-center gap-2">
+                  {project.status && (
+                    <span
+                      class:list={[
+                        'rounded-full border px-2.5 py-0.5 text-xs font-medium',
+                        statusStyle[project.status],
+                      ]}
+                    >
+                      {project.status}
+                    </span>
+                  )}
+                  {project.period && (
+                    <span class="tabular-nums text-xs text-bark-500 dark:text-night-400">
+                      {project.period}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">
+                {project.description}
+              </p>
+
+              {project.tech && project.tech.length > 0 && (
+                <ul class="mt-3 flex flex-wrap gap-1.5">
+                  {project.tech.map((tech) => (
+                    <li class="inline-flex items-center rounded-full bg-paper-200 px-2 py-0.5 font-mono text-xs text-bark-700 dark:bg-night-700 dark:text-night-400">
+                      {tech}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div class="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                {project.link && (
+                  <a
+                    href={project.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1.5 font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
+                  >
+                    <Icon name="external-link" size={14} />
+                    访问
+                  </a>
+                )}
+                {project.repo && (
+                  <a
+                    href={project.repo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1.5 font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
+                  >
+                    <Icon name="github" size={14} />
+                    源码
+                  </a>
+                )}
+              </div>
+            </article>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</ListLayout>

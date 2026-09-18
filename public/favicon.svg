@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    枫叶路径与 src/components/MapleLeaf.astro 保持同源（SVG 文件无法 import，只能内联）。
+    改形状时两处都要改。
+  -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8c05a" />
+      <stop offset="0.5" stop-color="#e2701f" />
+      <stop offset="1" stop-color="#c0392b" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#g)" />
+  <g transform="translate(32 32) scale(2.1) translate(-12 -12)">
+    <path
+      d="M12.00 0.60Q12.98 3.15 13.63 8.95Q17.71 6.44 19.97 5.92Q19.06 8.04 15.88 11.63Q20.26 13.08 22.05 14.37Q19.91 16.39 15.21 17.19L12.90 19.40L12.90 23.40L11.10 23.40L11.10 19.40L8.79 17.19Q4.09 16.39 1.95 14.37Q3.74 13.08 8.12 11.63Q4.94 8.04 4.03 5.92Q6.29 6.44 10.37 8.95Q11.02 3.15 12.00 0.60Z"
+      fill="#fffdf9"
+    />
+  </g>
+</svg>

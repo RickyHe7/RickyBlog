@@ -1,0 +1,40 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  items: { name: string; count?: number }[];
+  /** 当前高亮的标签名 */
+  current?: string;
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const { items, current, size = 'md', class: className = '' } = Astro.props;
+const isCurrent = (name: string) => current === name;
+---
+
+<ul class:list={['flex flex-wrap gap-1.5', className]}>
+  {
+    items.map((item) => (
+      <li>
+        <a
+          href={`/tags/${encodeURIComponent(item.name)}`}
+          aria-current={isCurrent(item.name) ? 'page' : undefined}
+          class:list={[
+            'inline-flex items-center gap-1 rounded-full border transition-colors duration-150',
+            size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm',
+            isCurrent(item.name)
+              ? 'border-maple-400 bg-maple-100 font-medium text-maple-800 dark:border-maple-700 dark:bg-night-700 dark:text-maple-300'
+              : 'border-paper-300 bg-white/60 text-bark-700 hover:border-maple-300 hover:bg-maple-50 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:bg-night-700 dark:hover:text-maple-300',
+          ]}
+        >
+          <Icon name="tag" size={size === 'sm' ? 11 : 13} />
+          <span>{item.name}</span>
+          {typeof item.count === 'number' && (
+            <span class="tabular-nums opacity-60">{item.count}</span>
+          )}
+        </a>
+      </li>
+    ))
+  }
+</ul>

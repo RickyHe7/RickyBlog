@@ -1,0 +1,41 @@
+---
+import Icon from './Icon.astro';
+
+/**
+ * 「内容待补充」提示块。
+ *
+ * 站上有几个页面（项目 / 友链 / 工具装备 / 近况）需要真实素材才能填，
+ * 而编造这些内容是被明令禁止的。与其塞假数据，不如如实说明缺什么、怎么补。
+ */
+interface Props {
+  title: string;
+  message: string;
+  items?: string[];
+}
+
+const { title, message, items = [] } = Astro.props;
+---
+
+<div
+  class="rounded-leaf border border-dashed border-ginkgo-500/70 bg-ginkgo-400/[0.07] p-5 dark:border-ginkgo-600/50 dark:bg-ginkgo-600/10"
+>
+  <p class="flex items-center gap-2 text-sm font-medium text-bark-900 dark:text-night-100">
+    <Icon name="leaf" size={16} class="text-ginkgo-600" />
+    {title}
+  </p>
+  <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">{message}</p>
+  {
+    items.length > 0 && (
+      <ul class="mt-3 space-y-1.5 text-sm text-bark-500 dark:text-night-400">
+        {items.map((item) => (
+          <li class="flex gap-2">
+            <span aria-hidden="true" class="select-none text-maple-500">
+              ·
+            </span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</div>

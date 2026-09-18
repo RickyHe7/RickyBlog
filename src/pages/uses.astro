@@ -1,0 +1,50 @@
+---
+import ListLayout from '../layouts/ListLayout.astro';
+import Icon from '../components/Icon.astro';
+import PlaceholderNote from '../components/PlaceholderNote.astro';
+import { USES } from '../data/optional';
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+---
+
+<ListLayout
+  title="工具装备"
+  description="日常在用的软件、硬件和配置。别人问起时，直接丢这个链接。"
+  posts={posts}
+>
+  {
+    USES.length === 0 ? (
+      <PlaceholderNote
+        title="还没有填写装备清单"
+        message="这类内容只有本人知道，猜不得。填充方式：编辑 src/data/optional.ts 里的 USES 数组，按分类分组即可。"
+        items={[
+          '结构是 { category: "编辑器", items: [{ name: "Neovim", note: "主力" }] }',
+          'note 是给这个工具的一句私人评价，比单纯的列表有用得多',
+          '只写真正在用的 —— 收录进清单本身就是在推荐',
+        ]}
+      />
+    ) : (
+      <div class="space-y-8">
+        {USES.map((group) => (
+          <section>
+            <h2 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+              <Icon name="monitor" size={15} />
+              {group.category}
+            </h2>
+            <ul class="mt-3 divide-y divide-paper-200 dark:divide-night-700">
+              {group.items.map((item) => (
+                <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5">
+                  <span class="font-medium text-bark-900 dark:text-night-100">{item.name}</span>
+                  {item.note && (
+                    <span class="text-sm text-bark-500 dark:text-night-400">{item.note}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    )
+  }
+</ListLayout>

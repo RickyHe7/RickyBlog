@@ -1,0 +1,60 @@
+---
+import { render } from 'astro:content';
+import PostLayout from '../../layouts/PostLayout.astro';
+import {
+  getPrevNext,
+  getPublishedPosts,
+  getSeriesSiblings,
+  type Post,
+} from '../../lib/posts';
+import { absoluteUrl, blogPostingJsonLd, breadcrumbJsonLd } from '../../lib/seo';
+
+/**
+ * 文章详情。
+ *
+ * getStaticPaths 只从 getPublishedPosts() 取数据，所以 draft: true 的文章
+ * 根本不会生成页面 —— 它同时也从列表、标签、归档、RSS、sitemap 里消失了。
+ */
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post, posts },
+  }));
+}
+
+interface Props {
+  post: Post;
+  posts: Post[];
+}
+
+const { post, posts } = Astro.props;
+const { Content, headings } = await render(post);
+
+const { prev, next } = getPrevNext(posts, post);
+const seriesPosts = getSeriesSiblings(posts, post);
+
+const site = Astro.site;
+const url = absoluteUrl(`/posts/${post.id}`, site);
+const image = absoluteUrl(post.data.cover ?? '/og-default.png', site);
+
+const jsonLd = [
+  blogPostingJsonLd(post, site, { url, image }),
+  breadcrumbJsonLd([
+    { name: '首页', url: absoluteUrl('/', site) },
+    { name: '文章', url: absoluteUrl('/posts', site) },
+    { name: post.data.title, url },
+  ]),
+];
+---
+
+<PostLayout
+  post={post}
+  headings={headings}
+  prev={prev}
+  next={next}
+  seriesPosts={seriesPosts}
+  jsonLd={jsonLd}
+>
+  <Content />
+</PostLayout>

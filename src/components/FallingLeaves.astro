@@ -1,0 +1,40 @@
+---
+import MapleLeaf from './MapleLeaf.astro';
+
+/**
+ * 背景落叶氛围层。
+ *
+ * 设计约束（都是刻意的）：
+ *   - 纯 CSS 动画，零 JS、零图片请求，不参与首屏渲染计算；
+ *   - 只有 7 片叶子（窄屏 3 片），opacity 0.18–0.3，绝不影响正文可读性；
+ *   - position: fixed + pointer-events: none，不遮挡点击、不产生滚动条；
+ *   - 系统开启「减少动效」时整层隐藏（见 global.css）。
+ *
+ * 每片叶子的颜色与大小在这里配，运动参数（时长、延迟、漂移、旋转）
+ * 由 global.css 里的 .leaf:nth-child(n) 规则给出。
+ */
+const COLORS = [
+  'var(--color-maple-400)',
+  'var(--color-ginkgo-400)',
+  'var(--color-crimson-400)',
+  'var(--color-maple-600)',
+  'var(--color-ginkgo-300)',
+  'var(--color-maple-500)',
+  'var(--color-crimson-500)',
+];
+
+const SIZES = [22, 16, 26, 18, 24, 15, 20];
+
+const leaves = SIZES.map((size, index) => ({
+  size,
+  color: COLORS[index % COLORS.length],
+}));
+---
+
+<div class="leaf-scene" aria-hidden="true" data-pagefind-ignore>
+  {
+    leaves.map((leaf) => (
+      <MapleLeaf class="leaf" size={leaf.size} style={`color: ${leaf.color}`} />
+    ))
+  }
+</div>

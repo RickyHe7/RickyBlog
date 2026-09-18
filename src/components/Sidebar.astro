@@ -1,0 +1,215 @@
+---
+import { SITE, SOCIALS } from '../consts';
+import { getAllCategories, getAllSeries, getAllTags, type Post } from '../lib/posts';
+import { formatDate } from '../lib/format';
+import Icon from './Icon.astro';
+
+interface Props {
+  posts: Post[];
+  /** 当前页面路径，用于高亮侧边栏里的当前分类/标签 */
+  currentPath?: string;
+}
+
+const { posts, currentPath = '' } = Astro.props;
+
+const categories = getAllCategories(posts);
+const tags = getAllTags(posts).slice(0, 18);
+const series = getAllSeries(posts);
+const latest = posts.slice(0, 5);
+
+const isCurrent = (href: string) => currentPath.replace(/\/$/, '') === href.replace(/\/$/, '');
+---
+
+<aside class="space-y-8" aria-label="侧边栏">
+  <!-- 作者卡 -->
+  <section
+    class="rounded-leaf border border-paper-200 bg-white/80 p-5 text-center shadow-sm shadow-maple-900/[0.03] dark:border-night-700 dark:bg-night-800/70"
+  >
+    <img
+      src="/avatar.svg"
+      alt={`${SITE.author} 的头像`}
+      width="88"
+      height="88"
+      class="mx-auto h-22 w-22 rounded-full ring-4 ring-maple-100 dark:ring-night-700"
+      style="height:5.5rem;width:5.5rem"
+      loading="lazy"
+      decoding="async"
+    />
+    <p class="mt-3 font-semibold text-bark-900 dark:text-night-100">{SITE.author}</p>
+    <p class="text-xs text-bark-500 dark:text-night-400">
+      {SITE.tagline}
+    </p>
+    <p class="mt-3 text-left text-sm leading-relaxed text-bark-700 dark:text-night-400">
+      {SITE.intro}
+    </p>
+    <div class="mt-4 flex items-center justify-center gap-2">
+      {
+        SOCIALS.map((social) => (
+          <a
+            href={social.href}
+            target={social.href.startsWith('http') ? '_blank' : undefined}
+            rel={social.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+            class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-paper-300 text-bark-500 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+            title={social.label}
+          >
+            <Icon name={social.icon} size={15} label={social.label} />
+          </a>
+        ))
+      }
+    </div>
+    <a
+      href="/about"
+      class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-maple-700 transition-colors duration-150 hover:text-maple-800 dark:text-maple-300 dark:hover:text-maple-200"
+    >
+      关于我
+      <Icon name="chevron-right" size={14} />
+    </a>
+  </section>
+
+  <!-- 分类 -->
+  {
+    categories.length > 0 && (
+      <section>
+        <h2 class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+          <Icon name="folder" size={14} />
+          分类
+        </h2>
+        <ul class="mt-3 space-y-1">
+          {categories.map((category) => {
+            const href = `/categories/${encodeURIComponent(category.name)}`;
+            return (
+              <li>
+                <a
+                  href={href}
+                  aria-current={isCurrent(href) ? 'page' : undefined}
+                  class:list={[
+                    'flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-150',
+                    isCurrent(href)
+                      ? 'bg-maple-100 font-medium text-maple-800 dark:bg-night-700 dark:text-maple-300'
+                      : 'text-bark-700 hover:bg-paper-200 hover:text-maple-700 dark:text-night-400 dark:hover:bg-night-800 dark:hover:text-night-100',
+                  ]}
+                >
+                  <span>{category.name}</span>
+                  <span class="tabular-nums text-xs text-bark-500 dark:text-night-400/80">
+                    {category.count}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    )
+  }
+
+  <!-- 标签云 -->
+  {
+    tags.length > 0 && (
+      <section>
+        <h2 class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+          <Icon name="tag" size={14} />
+          标签
+        </h2>
+        <ul class="mt-3 flex flex-wrap gap-1.5">
+          {tags.map((tag) => (
+            <li>
+              <a
+                href={`/tags/${encodeURIComponent(tag.name)}`}
+                class="inline-flex items-center gap-1 rounded-full border border-paper-300 bg-white/60 px-2.5 py-1 text-xs text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:bg-maple-50 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:bg-night-700 dark:hover:text-maple-300"
+              >
+                {tag.name}
+                <span class="tabular-nums opacity-60">{tag.count}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <a
+          href="/tags"
+          class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
+        >
+          全部标签
+          <Icon name="chevron-right" size={12} />
+        </a>
+      </section>
+    )
+  }
+
+  <!-- 系列文章 -->
+  {
+    series.length > 0 && (
+      <section>
+        <h2 class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+          <Icon name="book" size={14} />
+          系列
+        </h2>
+        <ul class="mt-3 space-y-1.5">
+          {series.map((group) => (
+            <li>
+              <a
+                href={`/tags/${encodeURIComponent(group.name)}`}
+                class="flex items-baseline justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm text-bark-700 transition-colors duration-150 hover:bg-paper-200 hover:text-maple-700 dark:text-night-400 dark:hover:bg-night-800 dark:hover:text-night-100"
+              >
+                <span class="truncate">{group.name}</span>
+                <span class="shrink-0 tabular-nums text-xs text-bark-500 dark:text-night-400/80">
+                  {group.posts.length} 篇
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <!-- 最新文章 -->
+  {
+    latest.length > 0 && (
+      <section>
+        <h2 class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+          <Icon name="clock" size={14} />
+          最新
+        </h2>
+        <ul class="mt-3 space-y-2">
+          {latest.map((post) => (
+            <li>
+              <a
+                href={`/posts/${post.id}`}
+                class="block text-sm leading-snug text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+              >
+                <span class="line-clamp-2-safe">{post.data.title}</span>
+                <time
+                  datetime={post.data.date.toISOString()}
+                  class="mt-0.5 block tabular-nums text-xs text-bark-500 dark:text-night-400/80"
+                >
+                  {formatDate(post.data.date)}
+                </time>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <!-- 订阅 -->
+  <section class="rounded-leaf border border-maple-100 bg-maple-50/70 p-4 dark:border-maple-800/40 dark:bg-night-800/60">
+    <p class="text-sm font-medium text-maple-800 dark:text-maple-300">订阅更新</p>
+    <p class="mt-1 text-xs leading-relaxed text-bark-500 dark:text-night-400">
+      用 RSS 阅读器订阅，或留下邮箱。更新随缘，但不会打扰你。
+    </p>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <a
+        href="/rss.xml"
+        class="inline-flex items-center gap-1.5 rounded-lg bg-maple-600 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-150 hover:bg-maple-700"
+      >
+        <Icon name="rss" size={13} />RSS
+      </a>
+      <a
+        href="/newsletter"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-maple-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-maple-700 transition-colors duration-150 hover:bg-white dark:border-maple-800 dark:bg-night-800 dark:text-maple-300"
+      >
+        <Icon name="send" size={13} />邮件订阅
+      </a>
+    </div>
+  </section>
+</aside>

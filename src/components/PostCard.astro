@@ -1,0 +1,106 @@
+---
+import type { Post } from '../lib/posts';
+import { formatDate, getReadingTime } from '../lib/format';
+import CoverImage from './CoverImage.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  post: Post;
+  /** 首页精选位：横向大卡 */
+  featured?: boolean;
+}
+
+const { post, featured = false } = Astro.props;
+const { data, id } = post;
+const reading = getReadingTime(post.body);
+const href = `/posts/${id}`;
+---
+
+<article
+  class:list={[
+    'card-lift group overflow-hidden rounded-leaf border border-paper-200 bg-white/85 shadow-sm shadow-maple-900/[0.03] hover:border-maple-300 hover:shadow-md hover:shadow-maple-900/[0.06] dark:border-night-700 dark:bg-night-800/70 dark:hover:border-maple-800',
+    featured && 'sm:flex sm:items-stretch',
+  ]}
+>
+  <a
+    href={href}
+    class:list={[
+      'block overflow-hidden bg-paper-200/60 dark:bg-night-700/60',
+      featured ? 'aspect-[16/9] sm:aspect-auto sm:w-[45%] sm:shrink-0' : 'aspect-[16/9]',
+    ]}
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    <CoverImage
+      src={data.cover}
+      alt={`${data.title} 的封面`}
+      seed={data.title}
+      class="transition-transform duration-500 group-hover:scale-[1.03]"
+    />
+  </a>
+
+  <div class:list={['flex flex-col p-5', featured && 'sm:justify-center sm:p-6']}>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-bark-500 dark:text-night-400">
+      <a
+        href={`/categories/${encodeURIComponent(data.category)}`}
+        class="inline-flex items-center gap-1 rounded-full bg-maple-100 px-2.5 py-0.5 font-medium text-maple-800 transition-colors duration-150 hover:bg-maple-200 dark:bg-night-700 dark:text-maple-300"
+      >
+        <Icon name="folder" size={12} />
+        {data.category}
+      </a>
+      <time datetime={data.date.toISOString()} class="tabular-nums">
+        {formatDate(data.date)}
+      </time>
+      <span class="inline-flex items-center gap-1 tabular-nums">
+        <Icon name="clock" size={12} />
+        {reading.label}
+      </span>
+      {
+        data.series && (
+          <span class="inline-flex items-center gap-1 rounded-full border border-ginkgo-400/60 bg-ginkgo-400/10 px-2 py-0.5 text-ginkgo-600">
+            <Icon name="book" size={12} />
+            {data.series}
+          </span>
+        )
+      }
+    </div>
+
+    <h3
+      class:list={[
+        'mt-3 font-semibold leading-snug text-bark-900 dark:text-night-100',
+        featured ? 'text-xl sm:text-2xl' : 'text-lg',
+      ]}
+    >
+      <a href={href} class="transition-colors duration-150 hover:text-maple-700 dark:hover:text-maple-300">
+        {data.title}
+      </a>
+    </h3>
+
+    <p
+      class:list={[
+        'mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400',
+        featured ? 'line-clamp-2-safe sm:text-base' : 'line-clamp-2-safe',
+      ]}
+    >
+      {data.description}
+    </p>
+
+    {
+      data.tags.length > 0 && (
+        <ul class="mt-4 flex flex-wrap gap-1.5">
+          {data.tags.slice(0, 4).map((tag) => (
+            <li>
+              <a
+                href={`/tags/${encodeURIComponent(tag)}`}
+                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-bark-500 transition-colors duration-150 hover:bg-paper-200 hover:text-maple-700 dark:text-night-400 dark:hover:bg-night-700 dark:hover:text-maple-300"
+              >
+                <Icon name="hash" size={11} />
+                {tag}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</article>

@@ -1,0 +1,81 @@
+---
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  /** 列表根路径，例如 /posts */
+  basePath: string;
+}
+
+const { currentPage, totalPages, basePath } = Astro.props;
+
+const pageUrl = (page: number) => (page === 1 ? basePath : `${basePath}/page/${page}`);
+
+/** 生成页码序列，页数多时用 null 表示省略号 */
+function buildPages(current: number, total: number): (number | null)[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = new Set<number>([1, total, current, current - 1, current + 1]);
+  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  let previous = 0;
+  for (const page of sorted) {
+    if (previous && page - previous > 1) out.push(null);
+    out.push(page);
+    previous = page;
+  }
+  return out;
+}
+
+const pages = buildPages(currentPage, totalPages);
+const linkBase =
+  'inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2.5 text-sm transition-colors duration-150';
+const inactive = `${linkBase} border-paper-300 bg-white/60 text-bark-700 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300`;
+const activeCls = `${linkBase} border-maple-500 bg-maple-600 font-medium text-white dark:border-maple-600`;
+const disabled = `${linkBase} cursor-not-allowed border-paper-200 bg-paper-100/60 text-bark-500/50 dark:border-night-700 dark:bg-night-800/40 dark:text-night-400/40`;
+---
+
+{
+  totalPages > 1 && (
+    <nav aria-label="分页导航" class="mt-10 flex items-center justify-center gap-1.5">
+      {currentPage > 1 ? (
+        <a href={pageUrl(currentPage - 1)} rel="prev" class={inactive} aria-label="上一页">
+          ← 上一页
+        </a>
+      ) : (
+        <span class={disabled} aria-disabled="true">
+          ← 上一页
+        </span>
+      )}
+
+      <ul class="flex items-center gap-1.5">
+        {pages.map((page) =>
+          page === null ? (
+            <li class="px-1 text-bark-500 dark:text-night-400" aria-hidden="true">
+              …
+            </li>
+          ) : (
+            <li>
+              <a
+                href={pageUrl(page)}
+                aria-current={page === currentPage ? 'page' : undefined}
+                aria-label={`第 ${page} 页`}
+                class={page === currentPage ? activeCls : inactive}
+              >
+                {page}
+              </a>
+            </li>
+          )
+        )}
+      </ul>
+
+      {currentPage < totalPages ? (
+        <a href={pageUrl(currentPage + 1)} rel="next" class={inactive} aria-label="下一页">
+          下一页 →
+        </a>
+      ) : (
+        <span class={disabled} aria-disabled="true">
+          下一页 →
+        </span>
+      )}
+    </nav>
+  )
+}

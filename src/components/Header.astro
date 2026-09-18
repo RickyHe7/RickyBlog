@@ -1,0 +1,190 @@
+---
+import { NAV, NAV_MORE, SITE } from '../consts';
+import MapleLeaf from './MapleLeaf.astro';
+import ThemeToggle from './ThemeToggle.astro';
+
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+---
+
+<header
+  class="sticky top-0 z-50 border-b border-paper-200/80 bg-paper-50/85 backdrop-blur-md dark:border-night-700/70 dark:bg-night-900/85"
+>
+  <div class="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:px-6">
+    <!-- 站点标识 -->
+    <a
+      href="/"
+      class="group flex items-center gap-2 rounded-lg py-1 pr-2 font-semibold text-bark-900 transition-colors duration-150 hover:text-maple-700 dark:text-night-100 dark:hover:text-maple-300"
+    >
+      <span
+        class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-ginkgo-400 via-maple-400 to-crimson-400 text-white shadow-sm transition-transform duration-200 group-hover:rotate-12"
+      >
+        <MapleLeaf size={15} />
+      </span>
+      <span class="text-[0.95rem] tracking-tight">{SITE.name}</span>
+    </a>
+
+    <!-- 桌面导航 -->
+    <nav aria-label="主导航" class="ml-2 hidden items-center gap-0.5 md:flex">
+      {
+        NAV.map((item) => (
+          <a
+            href={item.href}
+            aria-current={isActive(item.href) ? 'page' : undefined}
+            class:list={[
+              'rounded-lg px-2.5 py-1.5 text-sm transition-colors duration-150',
+              isActive(item.href)
+                ? 'bg-maple-100 font-medium text-maple-800 dark:bg-night-700 dark:text-maple-300'
+                : 'text-bark-700 hover:bg-paper-200 hover:text-maple-700 dark:text-night-400 dark:hover:bg-night-800 dark:hover:text-night-100',
+            ]}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="ml-auto flex items-center gap-1">
+      <!-- 搜索：真正的搜索页在 /search，这里只做入口 + 快捷键 -->
+      <a
+        href="/search"
+        data-search-trigger
+        class="inline-flex h-9 items-center gap-1.5 rounded-full border border-paper-300 bg-white/70 px-2.5 text-bark-500 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/70 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+        aria-label="搜索文章"
+      >
+        <svg
+          class="h-[17px] w-[17px]"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-3.6-3.6"></path>
+        </svg>
+        <kbd
+          class="hidden font-sans text-[0.7rem] tracking-wide text-bark-500/80 lg:inline dark:text-night-400/80"
+          >⌘K</kbd
+        >
+      </a>
+
+      <!-- 更多：桌面端下拉。用原生 <details> 实现，零 JS 且天然支持键盘 -->
+      <details class="group relative hidden md:block">
+        <summary
+          class="flex h-9 cursor-pointer list-none items-center gap-1 rounded-full border border-paper-300 bg-white/70 px-3 text-sm text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 marker:content-none dark:border-night-600 dark:bg-night-800/70 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+        >
+          更多
+          <svg
+            class="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6"></path>
+          </svg>
+        </summary>
+        <div
+          class="absolute right-0 top-11 w-44 overflow-hidden rounded-leaf border border-paper-200 bg-white py-1 shadow-lg shadow-maple-900/5 dark:border-night-700 dark:bg-night-800"
+        >
+          {
+            NAV_MORE.map((item) => (
+              <a
+                href={item.href}
+                class="block px-3.5 py-2 text-sm text-bark-700 transition-colors duration-150 hover:bg-paper-100 hover:text-maple-700 dark:text-night-400 dark:hover:bg-night-700 dark:hover:text-night-100"
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </div>
+      </details>
+
+      <ThemeToggle class="shrink-0" />
+
+      <!-- 移动端菜单：同样用 <details>，不需要 JS 也能开合 -->
+      <details class="group relative md:hidden">
+        <summary
+          class="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-paper-300 bg-white/70 text-bark-700 marker:content-none dark:border-night-600 dark:bg-night-800/70 dark:text-night-400"
+          aria-label="打开菜单"
+        >
+          <svg
+            class="h-[18px] w-[18px] group-open:hidden"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M4 7h16M4 12h16M4 17h16"></path>
+          </svg>
+          <svg
+            class="hidden h-[18px] w-[18px] group-open:block"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6L6 18"></path>
+          </svg>
+        </summary>
+        <nav
+          aria-label="移动端导航"
+          class="absolute right-0 top-11 w-52 overflow-hidden rounded-leaf border border-paper-200 bg-white py-1 shadow-lg shadow-maple-900/5 dark:border-night-700 dark:bg-night-800"
+        >
+          {
+            [...NAV, ...NAV_MORE].map((item) => (
+              <a
+                href={item.href}
+                aria-current={isActive(item.href) ? 'page' : undefined}
+                class:list={[
+                  'block px-4 py-2.5 text-sm transition-colors duration-150',
+                  isActive(item.href)
+                    ? 'bg-maple-50 font-medium text-maple-800 dark:bg-night-700 dark:text-maple-300'
+                    : 'text-bark-700 hover:bg-paper-100 hover:text-maple-700 dark:text-night-400 dark:hover:bg-night-700 dark:hover:text-night-100',
+                ]}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+      </details>
+    </div>
+  </div>
+
+  <!-- 秋色渐变条：站点唯一的「装饰性」色带 -->
+  <div
+    class="h-[3px] bg-gradient-to-r from-ginkgo-400 via-maple-500 to-crimson-500 opacity-80"
+    aria-hidden="true"
+  >
+  </div>
+</header>
+
+<script>
+  // ⌘K / Ctrl+K 跳到搜索页，顺手聚焦输入框
+  document.addEventListener('keydown', (event) => {
+    if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
+      const target = event.target as HTMLElement | null;
+      // 别抢走输入框里的正常输入
+      if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
+      event.preventDefault();
+      window.location.href = '/search';
+    }
+  });
+
+  // 从搜索结果页用快捷键进来时自动聚焦
+  if (window.location.pathname.replace(/\/$/, '') === '/search') {
+    const input = document.querySelector<HTMLInputElement>('#search input');
+    input?.focus();
+  }
+</script>

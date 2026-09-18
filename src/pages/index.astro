@@ -1,0 +1,190 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroBanner from '../components/HeroBanner.astro';
+import PostCard from '../components/PostCard.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Icon from '../components/Icon.astro';
+import { SITE } from '../consts';
+import { getAllCategories, getAllSeries, getFeaturedPosts, getPublishedPosts } from '../lib/posts';
+import { personJsonLd, websiteJsonLd } from '../lib/seo';
+
+/**
+ * 首页。
+ *
+ * 刻意不用 ListLayout：Banner 需要通栏出血，而 ListLayout 的内容是带容器的。
+ * Banner 之下再回到「主内容 + 侧边栏」的标准双栏。
+ */
+const posts = await getPublishedPosts();
+const featured = getFeaturedPosts(posts, 2);
+const featuredIds = new Set(featured.map((post) => post.id));
+const latest = posts.filter((post) => !featuredIds.has(post.id)).slice(0, 6);
+const categories = getAllCategories(posts);
+const series = getAllSeries(posts);
+const site = Astro.site;
+---
+
+<BaseLayout
+  description={SITE.description}
+  jsonLd={[websiteJsonLd(site), personJsonLd(site)]}
+>
+  <HeroBanner />
+
+  <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem]">
+      <div class="min-w-0">
+        <!-- 精选 -->
+        {
+          featured.length > 0 && (
+            <section aria-labelledby="featured-title">
+              <h2
+                id="featured-title"
+                class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400"
+              >
+                <Icon name="leaf" size={15} />
+                精选
+              </h2>
+              <div class="mt-4 space-y-4">
+                {featured.map((post) => (
+                  <PostCard post={post} featured />
+                ))}
+              </div>
+            </section>
+          )
+        }
+
+        <!--
+          indexCard：文章卡片区。
+          Hero 里的「开始阅读」按钮就是锚到这个 id（与参考站点 joytsing.cn 一致）。
+          scroll-mt-20 让吸顶导航不会盖住标题。
+        -->
+        <section
+          id="indexCard"
+          class:list={['scroll-mt-20', featured.length > 0 && 'mt-12']}
+          aria-labelledby="latest-title"
+        >
+          <div class="flex items-baseline justify-between gap-4">
+            <h2
+              id="latest-title"
+              class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400"
+            >
+              <Icon name="clock" size={15} />
+              最新文章
+            </h2>
+            <a
+              href="/posts"
+              class="inline-flex items-center gap-1 text-xs font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
+            >
+              全部 {posts.length} 篇
+              <Icon name="chevron-right" size={12} />
+            </a>
+          </div>
+
+          {
+            latest.length > 0 ? (
+              <div class="mt-4 space-y-4">
+                {latest.map((post) => (
+                  <PostCard post={post} />
+                ))}
+              </div>
+            ) : (
+              <p class="mt-4 text-sm text-bark-500 dark:text-night-400">
+                还没有发布的文章。在 src/content/posts/ 里新建一个 .md 文件即可。
+              </p>
+            )
+          }
+
+          <div class="mt-6">
+            <a
+              href="/archives"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/70 px-3.5 py-2 text-sm text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+            >
+              <Icon name="list" size={15} />
+              查看归档
+            </a>
+          </div>
+        </section>
+
+        <!-- 分类入口 -->
+        {
+          categories.length > 0 && (
+            <section class="mt-12" aria-labelledby="categories-title">
+              <h2
+                id="categories-title"
+                class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400"
+              >
+                <Icon name="folder" size={15} />
+                分类
+              </h2>
+              <ul class="mt-4 grid gap-3 sm:grid-cols-2">
+                {categories.map((category) => (
+                  <li>
+                    <a
+                      href={`/categories/${encodeURIComponent(category.name)}`}
+                      class="card-lift flex items-center justify-between rounded-leaf border border-paper-200 bg-white/70 px-4 py-3 hover:border-maple-300 dark:border-night-700 dark:bg-night-800/60 dark:hover:border-maple-800"
+                    >
+                      <span class="flex items-center gap-2 text-sm font-medium text-bark-900 dark:text-night-100">
+                        <Icon name="folder" size={15} class="text-maple-500" />
+                        {category.name}
+                      </span>
+                      <span class="tabular-nums text-xs text-bark-500 dark:text-night-400">
+                        {category.count} 篇
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        <!-- 系列入口 -->
+        {
+          series.length > 0 && (
+            <section class="mt-12" aria-labelledby="series-title">
+              <h2
+                id="series-title"
+                class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400"
+              >
+                <Icon name="book" size={15} />
+                系列
+              </h2>
+              <ul class="mt-4 space-y-3">
+                {series.map((group) => (
+                  <li>
+                    <div class="rounded-leaf border border-paper-200 bg-white/70 p-4 dark:border-night-700 dark:bg-night-800/60">
+                      <p class="flex items-center gap-2 text-sm font-medium text-bark-900 dark:text-night-100">
+                        {group.name}
+                        <span class="tabular-nums text-xs font-normal text-bark-500 dark:text-night-400">
+                          {group.posts.length} 篇
+                        </span>
+                      </p>
+                      <ol class="mt-2 space-y-1">
+                        {group.posts.map((post, index) => (
+                          <li class="flex items-baseline gap-2 text-sm">
+                            <span class="w-4 shrink-0 tabular-nums text-xs text-bark-500 dark:text-night-400">
+                              {index + 1}.
+                            </span>
+                            <a
+                              href={`/posts/${post.id}`}
+                              class="text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+                            >
+                              {post.data.title}
+                            </a>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+
+      <div class="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+        <Sidebar posts={posts} />
+      </div>
+    </div>
+  </div>
+</BaseLayout>

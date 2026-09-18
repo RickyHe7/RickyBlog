@@ -1,0 +1,57 @@
+---
+import ListLayout from '../../layouts/ListLayout.astro';
+import TagList from '../../components/TagList.astro';
+import { getAllTags, getPublishedPosts } from '../../lib/posts';
+
+const posts = await getPublishedPosts();
+const tags = getAllTags(posts);
+
+/** 按文章数分成三档，视觉上区分热度，而不是无意义地让所有标签一样大 */
+const maxCount = Math.max(1, ...tags.map((tag) => tag.count));
+const hot = tags.filter((tag) => tag.count >= Math.ceil(maxCount * 0.6));
+const warm = tags.filter(
+  (tag) => tag.count < Math.ceil(maxCount * 0.6) && tag.count > 1
+);
+const cold = tags.filter((tag) => tag.count <= 1);
+---
+
+<ListLayout
+  title="标签"
+  description={`共 ${tags.length} 个标签。适合按兴趣横向翻找。`}
+  posts={posts}
+>
+  {
+    tags.length === 0 ? (
+      <p class="text-sm text-bark-500 dark:text-night-400">还没有任何标签。</p>
+    ) : (
+      <div class="space-y-8">
+        {hot.length > 0 && (
+          <section>
+            <h2 class="text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+              写得多
+            </h2>
+            <TagList items={hot} class="mt-3" />
+          </section>
+        )}
+
+        {warm.length > 0 && (
+          <section>
+            <h2 class="text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+              零星几篇
+            </h2>
+            <TagList items={warm} class="mt-3" />
+          </section>
+        )}
+
+        {cold.length > 0 && (
+          <section>
+            <h2 class="text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+              只出现过一次
+            </h2>
+            <TagList items={cold} size="sm" class="mt-3" />
+          </section>
+        )}
+      </div>
+    )
+  }
+</ListLayout>

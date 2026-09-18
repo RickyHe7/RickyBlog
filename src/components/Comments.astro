@@ -1,0 +1,74 @@
+---
+/**
+ * 评论：Giscus（基于 GitHub Discussions）。
+ *
+ * 当前状态：配置留空 → 整块不渲染。
+ * 启用方式：在 .env 里填好下面四个变量（取值见 https://giscus.app/zh-CN）。
+ *
+ * 设计取舍：giscus 与页面主题联动 —— 切换明暗时通过 postMessage 通知 iframe
+ * 换主题，避免出现「暗色页面里嵌一块白色评论区」。
+ */
+const repo = import.meta.env.PUBLIC_GISCUS_REPO;
+const repoId = import.meta.env.PUBLIC_GISCUS_REPO_ID;
+const category = import.meta.env.PUBLIC_GISCUS_CATEGORY ?? 'Announcements';
+const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID;
+
+const enabled = Boolean(repo && repoId && categoryId);
+---
+
+{
+  enabled ? (
+    <section
+      class="mt-12 border-t border-paper-200 pt-8 dark:border-night-700"
+      aria-label="评论"
+      data-pagefind-ignore
+    >
+      <h2 class="mb-4 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+        评论
+      </h2>
+      <div class="giscus" />
+      <script
+        is:inline
+        src="https://giscus.app/client.js"
+        data-repo={repo}
+        data-repo-id={repoId}
+        data-category={category}
+        data-category-id={categoryId}
+        data-mapping="pathname"
+        data-strict="1"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        data-loading="lazy"
+        crossorigin="anonymous"
+        async
+      />
+      <script>
+        // giscus 的 data-theme 需要跟着站点主题走
+        const THEMES = { light: 'light', dark: 'dark_dimmed' };
+
+        function syncGiscusTheme(theme: 'light' | 'dark') {
+          const frame = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame');
+          if (!frame?.contentWindow) return;
+          frame.contentWindow.postMessage(
+            { giscus: { setConfig: { theme: THEMES[theme] } } },
+            'https://giscus.app'
+          );
+        }
+
+        document.addEventListener('themechange', (event) => {
+          const theme = (event as CustomEvent<{ theme: 'light' | 'dark' }>).detail.theme;
+          syncGiscusTheme(theme);
+        });
+
+        // 首帧：等 iframe 加载完再同步一次，防止初始主题错位
+        window.addEventListener('load', () => {
+          const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+          setTimeout(() => syncGiscusTheme(theme), 1200);
+        });
+      </script>
+    </section>
+  ) : null
+}

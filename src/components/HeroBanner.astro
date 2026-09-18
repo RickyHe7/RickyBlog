@@ -1,0 +1,158 @@
+---
+import Icon from './Icon.astro';
+import MapleLeaf from './MapleLeaf.astro';
+import { SITE, SOCIALS } from '../consts';
+
+/**
+ * 首页 Banner。
+ *
+ * 结构参考了 joytsing.cn（Hexo + Matery）的做法：
+ *   全屏 banner + 打字机副标题 + 「开始阅读」按钮锚点跳到底部 #indexCard 文章卡片区。
+ *
+ * 差异（刻意的）：
+ *   - 不用 banner 背景图，改用渐变 + 枫叶形状叠加 —— 零图片请求、零版权风险；
+ *   - 打字机只打一遍站点副标题，不循环删除重打，避免长期干扰阅读。
+ */
+---
+
+<section
+  class="relative overflow-hidden border-b border-paper-200 bg-gradient-to-b from-ginkgo-100/70 via-paper-100 to-paper-100 dark:border-night-700 dark:from-night-800 dark:via-night-900 dark:to-night-900"
+  aria-labelledby="banner-title"
+>
+  <!-- 秋色光斑 -->
+  <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+    <div
+      class="absolute -left-24 top-0 h-72 w-72 rounded-full bg-ginkgo-300/40 blur-3xl dark:bg-ginkgo-600/15"
+    >
+    </div>
+    <div
+      class="absolute -right-20 top-10 h-80 w-80 rounded-full bg-maple-300/40 blur-3xl dark:bg-maple-800/20"
+    >
+    </div>
+    <div
+      class="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-crimson-400/20 blur-3xl dark:bg-crimson-600/10"
+    >
+    </div>
+  </div>
+
+  <!-- 装饰枫叶：大而淡，压在文字后面 -->
+  <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <MapleLeaf
+      size={112}
+      class="absolute right-[6%] top-[12%] rotate-12 text-maple-400/25 dark:text-maple-700/25"
+    />
+    <MapleLeaf
+      size={80}
+      class="absolute bottom-[8%] left-[4%] -rotate-12 text-ginkgo-500/25 dark:text-ginkgo-600/25"
+    />
+    <MapleLeaf
+      size={48}
+      class="absolute bottom-[22%] right-[18%] rotate-45 text-crimson-400/20 dark:text-crimson-500/20"
+    />
+  </div>
+
+  <div
+    class="relative mx-auto flex min-h-[22rem] max-w-3xl flex-col items-center justify-center px-4 py-16 text-center sm:min-h-[26rem] sm:py-20"
+  >
+    <span
+      class="inline-flex rounded-full bg-gradient-to-br from-ginkgo-400 via-maple-400 to-crimson-500 p-[3px] shadow-sm"
+    >
+      <img
+        src="/avatar.svg"
+        alt={`${SITE.author} 的头像`}
+        width="96"
+        height="96"
+        class="h-20 w-20 rounded-full bg-paper-50 sm:h-24 sm:w-24 dark:bg-night-900"
+        style="height:5.5rem;width:5.5rem"
+      />
+    </span>
+
+    <h1
+      id="banner-title"
+      class="mt-5 text-2xl font-bold tracking-tight text-bark-900 sm:text-4xl dark:text-night-100"
+    >
+      {SITE.name}
+    </h1>
+
+    <!-- 打字机副标题：高度固定住，避免打字过程把下面的按钮顶来顶去 -->
+    <p
+      class="mt-3 flex min-h-[1.75rem] items-center justify-center text-sm font-medium text-maple-700 sm:text-base dark:text-maple-300"
+      aria-label={SITE.tagline}
+    >
+      <span data-typing={SITE.tagline} aria-hidden="true"></span>
+      <span
+        data-typing-cursor
+        class="ml-0.5 inline-block w-[2px] animate-pulse bg-maple-600 dark:bg-maple-400"
+        style="height:1.1em"
+        aria-hidden="true"
+      >
+      </span>
+    </p>
+
+    <p class="mt-4 max-w-xl text-sm leading-relaxed text-bark-500 dark:text-night-400">
+      {SITE.intro}
+    </p>
+
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <a
+        href="#indexCard"
+        class="inline-flex items-center gap-1.5 rounded-lg bg-maple-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors duration-150 hover:bg-maple-700"
+      >
+        <Icon name="chevron-down" size={16} />
+        开始阅读
+      </a>
+      <a
+        href="/about"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/70 px-4 py-2.5 text-sm font-medium text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/70 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+      >
+        关于我
+      </a>
+    </div>
+
+    <ul class="mt-7 flex items-center gap-2.5">
+      {
+        SOCIALS.map((social) => (
+          <li>
+            <a
+              href={social.href}
+              target={social.href.startsWith('http') ? '_blank' : undefined}
+              rel={social.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-paper-300 bg-white/60 text-bark-500 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+              title={social.label}
+            >
+              <Icon name={social.icon} size={17} label={social.label} />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<script>
+  // 打字机效果。尊重「减少动效」：直接一次性显示，不做逐字动画。
+  const target = document.querySelector<HTMLElement>('[data-typing]');
+  const cursor = document.querySelector<HTMLElement>('[data-typing-cursor]');
+
+  if (target) {
+    const text = target.dataset.typing ?? '';
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduceMotion || text.length === 0) {
+      target.textContent = text;
+      cursor?.remove();
+    } else {
+      let index = 0;
+      const step = () => {
+        index += 1;
+        target.textContent = text.slice(0, index);
+        if (index < text.length) {
+          // 随机间隔 80–180ms，比匀速更像真的在打字
+          window.setTimeout(step, 80 + Math.random() * 100);
+        }
+      };
+      target.textContent = '';
+      window.setTimeout(step, 350);
+    }
+  }
+</script>

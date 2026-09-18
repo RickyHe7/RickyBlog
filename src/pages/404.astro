@@ -1,0 +1,63 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import MapleLeaf from '../components/MapleLeaf.astro';
+import { NAV } from '../consts';
+---
+
+<BaseLayout title="页面不存在" description="你要找的页面不在这里。" noindex>
+  <div class="mx-auto flex max-w-2xl flex-col items-center px-4 py-20 text-center sm:py-28">
+    <!-- 一片被风吹走的叶子 -->
+    <span class="relative inline-block" aria-hidden="true">
+      <MapleLeaf size={96} class="-rotate-12 text-maple-400/80 drop-shadow-sm" />
+      <span
+        class="absolute -bottom-3 left-1/2 h-[3px] w-24 -translate-x-1/2 rounded-full bg-gradient-to-r from-ginkgo-400 via-maple-500 to-crimson-500"
+      ></span>
+    </span>
+
+    <p class="mt-8 font-mono text-5xl font-bold tracking-tight text-bark-900 sm:text-6xl dark:text-night-100">
+      404
+    </p>
+
+    <h1 class="mt-4 text-lg font-semibold text-bark-900 dark:text-night-100">
+      这片叶子被风吹走了
+    </h1>
+    <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">
+      你访问的页面不存在，或者已经被移走。可能是链接写错了，也可能是文章改了名字。
+    </p>
+
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <a
+        href="/"
+        class="inline-flex items-center gap-1.5 rounded-lg bg-maple-600 px-4 py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-maple-700"
+      >
+        <Icon name="home" size={15} />
+        回到首页
+      </a>
+      <a
+        href="/search"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/70 px-4 py-2.5 text-sm font-medium text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/70 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+      >
+        <Icon name="search" size={15} />
+        搜索一下
+      </a>
+    </div>
+
+    <nav aria-label="站点导航" class="mt-10 border-t border-paper-200 pt-6 dark:border-night-700">
+      <ul class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
+        {
+          NAV.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                class="text-bark-500 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</BaseLayout>

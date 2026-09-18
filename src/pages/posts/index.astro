@@ -1,0 +1,28 @@
+---
+import ListLayout from '../../layouts/ListLayout.astro';
+import PostListBody from '../../components/PostListBody.astro';
+import { POSTS_PER_PAGE } from '../../consts';
+import { getPublishedPosts } from '../../lib/posts';
+import { absoluteUrl, breadcrumbJsonLd } from '../../lib/seo';
+
+const allPosts = await getPublishedPosts();
+const totalPages = Math.max(1, Math.ceil(allPosts.length / POSTS_PER_PAGE));
+const firstPage = allPosts.slice(0, POSTS_PER_PAGE);
+const site = Astro.site;
+
+const jsonLd = [
+  breadcrumbJsonLd([
+    { name: '首页', url: absoluteUrl('/', site) },
+    { name: '文章', url: absoluteUrl('/posts', site) },
+  ]),
+];
+---
+
+<ListLayout
+  title="文章"
+  description={`全部 ${allPosts.length} 篇文章，按发布时间从新到旧。`}
+  posts={allPosts}
+  jsonLd={jsonLd}
+>
+  <PostListBody posts={firstPage} currentPage={1} totalPages={totalPages} />
+</ListLayout>

@@ -1,0 +1,180 @@
+---
+import Icon from './Icon.astro';
+---
+
+<section aria-label="站内搜索" class="not-prose">
+  <!--
+    Pagefind 在构建后工作，dev server 下不存在索引。
+    因此这里不做「假装能搜」的处理：开发环境直接显示说明，生产环境才加载搜索 UI。
+    好处是开发时控制台不会出现 404 报错。
+  -->
+  <div id="search" class="pf-search"></div>
+
+  <div
+    id="search-fallback"
+    hidden
+    class="rounded-leaf border border-dashed border-paper-300 bg-paper-100/60 p-5 dark:border-night-600 dark:bg-night-800/50"
+  >
+    <p class="flex items-center gap-1.5 text-sm font-medium text-bark-700 dark:text-night-100">
+      <Icon name="search" size={16} />
+      <span data-fallback-title>搜索索引还没有生成</span>
+    </p>
+    <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">
+      <span data-fallback-message>
+        Pagefind 索引的是「构建出来的 HTML」，所以开发服务器里搜不到东西 —— 这是它的工作原理，
+        不是故障。
+      </span>
+    </p>
+    <pre
+      class="mt-3 overflow-x-auto rounded-lg bg-night-900 p-3 font-mono text-xs leading-relaxed text-night-100"
+    ><code>npm run build
+npm run preview</code></pre>
+    <p class="mt-3 text-sm text-bark-500 dark:text-night-400">
+      执行上面两步后访问 <code class="rounded bg-paper-200 px-1.5 py-0.5 font-mono text-xs dark:bg-night-700"
+        >/preview 地址下的 /search</code
+      >，搜索即可正常工作。也可以先直接
+      <a
+        href="/posts"
+        class="font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
+        >浏览全部文章</a
+      >。
+    </p>
+  </div>
+
+  <noscript>
+    <p class="mt-4 text-sm text-bark-500 dark:text-night-400">
+      站内搜索需要启用 JavaScript。你也可以直接前往
+      <a href="/posts" class="font-medium text-maple-700">文章列表</a>
+      或 <a href="/archives" class="font-medium text-maple-700">归档页</a> 浏览。
+    </p>
+  </noscript>
+</section>
+
+<style>
+  /* 让 Pagefind UI 跟随站点主题，而不是它默认的蓝白配色 */
+  .pf-search {
+    --pagefind-ui-primary: var(--color-maple-700);
+    --pagefind-ui-text: var(--color-bark-900);
+    --pagefind-ui-background: transparent;
+    --pagefind-ui-border: var(--color-paper-300);
+    --pagefind-ui-tag: var(--color-paper-200);
+    --pagefind-ui-border-width: 1px;
+    --pagefind-ui-border-radius: 0.75rem;
+    --pagefind-ui-font: var(--font-sans);
+  }
+  :global(.dark) .pf-search {
+    --pagefind-ui-primary: var(--color-maple-300);
+    --pagefind-ui-text: var(--color-night-100);
+    --pagefind-ui-background: transparent;
+    --pagefind-ui-border: var(--color-night-600);
+    --pagefind-ui-tag: var(--color-night-700);
+  }
+  /* Pagefind 的输入框默认自带白底，这里让它融进页面 */
+  .pf-search :global(.pagefind-ui__search-input) {
+    background-color: color-mix(in srgb, white 70%, transparent);
+    color: var(--color-bark-900);
+    font-weight: 400;
+  }
+  :global(.dark) .pf-search :global(.pagefind-ui__search-input) {
+    background-color: color-mix(in srgb, var(--color-night-800) 70%, transparent);
+    color: var(--color-night-100);
+  }
+  .pf-search :global(.pagefind-ui__result) {
+    border-top: 1px solid var(--color-paper-200);
+  }
+  :global(.dark) .pf-search :global(.pagefind-ui__result) {
+    border-top-color: var(--color-night-700);
+  }
+</style>
+
+<script>
+  const UI_CSS = '/pagefind/pagefind-ui.css';
+  const UI_JS = '/pagefind/pagefind-ui.js';
+
+  function showFallback(title: string, message: string) {
+    const container = document.getElementById('search');
+    if (container) container.innerHTML = '';
+    const fallback = document.getElementById('search-fallback');
+    if (!fallback) return;
+    const titleEl = fallback.querySelector('[data-fallback-title]');
+    const messageEl = fallback.querySelector('[data-fallback-message]');
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
+    fallback.hidden = false;
+  }
+
+  function loadCss(href: string) {
+    return new Promise<void>((resolve, reject) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error(href));
+      document.head.appendChild(link);
+    });
+  }
+
+  function loadScript(src: string) {
+    return new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(src));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function initSearch() {
+    const container = document.getElementById('search');
+    if (!container) return;
+
+    // 开发服务器下没有索引，直接给说明，避免无意义的 404
+    if (import.meta.env.DEV) {
+      showFallback(
+        '开发模式下搜索不可用（这是正常的）',
+        'Pagefind 索引的是构建产物，dev server 里并不存在这些文件。想看搜索效果请执行 build + preview。'
+      );
+      return;
+    }
+
+    try {
+      await loadCss(UI_CSS);
+      await loadScript(UI_JS);
+    } catch {
+      showFallback(
+        '搜索资源加载失败',
+        '没有找到 /pagefind/ 目录下的搜索资源。请确认构建流程中 Pagefind 索引步骤正常执行完成。'
+      );
+      return;
+    }
+
+    const PagefindUI = (window as unknown as { PagefindUI?: new (opts: object) => void })
+      .PagefindUI;
+    if (!PagefindUI) {
+      showFallback('搜索组件初始化失败', 'Pagefind UI 已加载但没有挂到全局，请检查资源版本。');
+      return;
+    }
+
+    new PagefindUI({
+      element: '#search',
+      showSubResults: true,
+      showImages: false,
+      excerptLength: 20,
+      translations: {
+        placeholder: '搜索文章…',
+        clear_search: '清空',
+        load_more: '加载更多结果',
+        search_label: '搜索本站',
+        filters_label: '筛选',
+        zero_results: '没有找到与 [SEARCH_TERM] 相关的内容',
+        many_results: '找到 [COUNT] 条与 [SEARCH_TERM] 相关的内容',
+        one_result: '找到 1 条与 [SEARCH_TERM] 相关的内容',
+        alt_search: '没有找到 [SEARCH_TERM]，改为显示 [DIFFERENT_TERM] 的结果',
+        search_suggestion: '没有找到相关内容，试试这些关键词：',
+        searching: '搜索中…',
+      },
+    });
+  }
+
+  void initSearch();
+</script>

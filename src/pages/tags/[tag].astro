@@ -1,0 +1,60 @@
+---
+import ListLayout from '../../layouts/ListLayout.astro';
+import PostListBody from '../../components/PostListBody.astro';
+import TagList from '../../components/TagList.astro';
+import { getAllTags, getPostsByTag, getPublishedPosts } from '../../lib/posts';
+import { absoluteUrl, breadcrumbJsonLd } from '../../lib/seo';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return getAllTags(posts).map((tag) => ({
+    params: { tag: tag.name },
+    props: { tagName: tag.name, count: tag.count },
+  }));
+}
+
+interface Props {
+  tagName: string;
+  count: number;
+}
+
+const { tagName, count } = Astro.props;
+const allPosts = await getPublishedPosts();
+const tagPosts = getPostsByTag(allPosts, tagName);
+const site = Astro.site;
+const related = getAllTags(allPosts)
+  .filter((tag) => tag.name !== tagName)
+  .slice(0, 12);
+
+const jsonLd = [
+  breadcrumbJsonLd([
+    { name: '首页', url: absoluteUrl('/', site) },
+    { name: '标签', url: absoluteUrl('/tags', site) },
+    { name: tagName, url: absoluteUrl(`/tags/${encodeURIComponent(tagName)}`, site) },
+  ]),
+];
+---
+
+<ListLayout
+  title={`标签：${tagName}`}
+  description={`标记为「${tagName}」的${count}篇文章。`}
+  posts={allPosts}
+  jsonLd={jsonLd}
+>
+  <div class="mb-6">
+    <TagList items={[{ name: tagName, count }]} current={tagName} />
+  </div>
+
+  <PostListBody posts={tagPosts} currentPage={1} totalPages={1} />
+
+  {
+    related.length > 0 && (
+      <section class="mt-10 border-t border-paper-200 pt-6 dark:border-night-700">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+          相关标签
+        </h2>
+        <TagList items={related} size="sm" class="mt-3" />
+      </section>
+    )
+  }
+</ListLayout>

@@ -1,0 +1,47 @@
+---
+import ListLayout from '../../../layouts/ListLayout.astro';
+import PostListBody from '../../../components/PostListBody.astro';
+import { POSTS_PER_PAGE } from '../../../consts';
+import { chunk } from '../../../lib/format';
+import { getPublishedPosts, type Post } from '../../../lib/posts';
+
+/**
+ * 分页列表。
+ *
+ * 路径刻意用 /posts/page/2 而不是 /posts/[...page]：
+ * 后者会和 /posts/[...slug].astro（文章详情）争抢同一个动态段，路由会打架。
+ */
+export async function getStaticPaths() {
+  const allPosts = await getPublishedPosts();
+  const pages = chunk(allPosts, POSTS_PER_PAGE);
+
+  // 第 1 页由 /posts/index.astro 负责，这里只生成第 2 页往后
+  return pages.slice(1).map((pagePosts, index) => ({
+    params: { page: String(index + 2) },
+    props: {
+      pagePosts,
+      currentPage: index + 2,
+      totalPages: pages.length,
+      allPosts,
+    },
+  }));
+}
+
+interface Props {
+  pagePosts: Post[];
+  currentPage: number;
+  totalPages: number;
+  allPosts: Post[];
+}
+
+const { pagePosts, currentPage, totalPages, allPosts } = Astro.props;
+---
+
+<ListLayout
+  title={`文章 · 第 ${currentPage} 页`}
+  description={`全部 ${allPosts.length} 篇文章，当前是第 ${currentPage} 页（共 ${totalPages} 页）。`}
+  posts={allPosts}
+  currentPath="/posts"
+>
+  <PostListBody posts={pagePosts} currentPage={currentPage} totalPages={totalPages} />
+</ListLayout>

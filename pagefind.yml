@@ -1,0 +1,15 @@
+# Pagefind 搜索索引配置
+#
+# 说明：真正的索引范围由页面上的 data-pagefind-body 属性决定（只有带这个属性的
+#       区域会被索引，且没有该属性的页面会被整体跳过）。这里的 exclude_selectors
+#       是第二道保险，防止导航/页脚的文字污染搜索结果。
+#
+# site 与 output_path 由 astro-pagefind 集成在构建时注入，此处不重复声明。
+
+exclude_selectors:
+  - "nav"
+  - "footer"
+  - "aside"
+  - "script"
+  - "style"
+  - "[data-pagefind-ignore]"

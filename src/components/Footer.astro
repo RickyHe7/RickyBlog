@@ -1,0 +1,121 @@
+---
+import { FOOTER_NOTE, NAV, NAV_MORE, SITE, SOCIALS } from '../consts';
+import Icon from './Icon.astro';
+import MapleLeaf from './MapleLeaf.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer
+  class="mt-20 border-t border-paper-200 bg-paper-100/60 dark:border-night-700 dark:bg-night-950/60"
+  data-pagefind-ignore
+>
+  <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <div class="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+      <!-- 站点简介 -->
+      <div>
+        <div class="flex items-center gap-2">
+          <span
+            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-ginkgo-400 via-maple-400 to-crimson-400 text-white"
+          >
+            <MapleLeaf size={13} />
+          </span>
+          <span class="font-semibold text-bark-900 dark:text-night-100">{SITE.name}</span>
+        </div>
+        <p class="mt-3 max-w-sm text-sm leading-relaxed text-bark-500 dark:text-night-400">
+          {SITE.tagline}。{FOOTER_NOTE}
+        </p>
+        <ul class="mt-4 flex items-center gap-2">
+          {
+            SOCIALS.map((social) => (
+              <li>
+                <a
+                  href={social.href}
+                  target={social.href.startsWith('http') ? '_blank' : undefined}
+                  rel={social.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-paper-300 bg-white/60 text-bark-500 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+                  title={social.label}
+                >
+                  <Icon name={social.icon} size={17} label={social.label} />
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <!-- 导航 -->
+      <nav aria-label="页脚导航">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+          浏览
+        </h2>
+        <ul class="mt-3 space-y-2 text-sm">
+          {
+            NAV.map((item) => (
+              <li>
+                <a
+                  href={item.href}
+                  class="text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <!-- 其它 -->
+      <nav aria-label="更多导航">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-bark-500 dark:text-night-400">
+          更多
+        </h2>
+        <ul class="mt-3 space-y-2 text-sm">
+          {
+            NAV_MORE.map((item) => (
+              <li>
+                <a
+                  href={item.href}
+                  class="text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+          <li>
+            <a
+              href="/rss.xml"
+              class="inline-flex items-center gap-1.5 text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+            >
+              <Icon name="rss" size={14} />RSS 订阅
+            </a>
+          </li>
+          <li>
+            <a
+              href="/sitemap-index.xml"
+              class="inline-flex items-center gap-1.5 text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
+            >
+              <Icon name="link" size={14} />Sitemap
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <div
+      class="mt-10 flex flex-col gap-2 border-t border-paper-200 pt-6 text-xs text-bark-500 sm:flex-row sm:items-center sm:justify-between dark:border-night-700 dark:text-night-400"
+    >
+      <p>© {year} {SITE.author}. 保留所有权利。</p>
+      <p class="tabular-nums">
+        用 <a
+          href="https://astro.build"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline decoration-maple-300 underline-offset-2 hover:text-maple-700 dark:decoration-maple-800 dark:hover:text-maple-300"
+          >Astro</a
+        > 构建 · 托管于 Cloudflare Pages
+      </p>
+    </div>
+  </div>
+</footer>

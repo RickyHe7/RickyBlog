@@ -1,0 +1,22 @@
+# 依赖与构建产物
+node_modules/
+dist/
+.astro/
+
+# 本地生成的搜索索引（Pagefind 的产物，不要提交）
+public/pagefind/
+
+# 环境变量：只提交 .env.example
+.env
+.env.local
+.env.*.local
+
+# 助手的项目记忆与工作日志（属于本地元数据，不是项目源码）
+.workbuddy/
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

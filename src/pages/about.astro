@@ -1,0 +1,131 @@
+---
+import { getEntry, render } from 'astro:content';
+import ListLayout from '../layouts/ListLayout.astro';
+import Icon from '../components/Icon.astro';
+import { SITE, SOCIALS } from '../consts';
+import { getPublishedPosts } from '../lib/posts';
+import { personJsonLd } from '../lib/seo';
+
+const posts = await getPublishedPosts();
+const about = await getEntry('pages', 'about');
+const Content = about ? (await render(about)).Content : undefined;
+const site = Astro.site;
+---
+
+<ListLayout
+  title={about?.data.title ?? '关于'}
+  description={about?.data.description ?? `关于 ${SITE.author}。`}
+  posts={posts}
+  jsonLd={[personJsonLd(site)]}
+>
+  <!-- 名片 -->
+  <section
+    class="rounded-leaf border border-paper-200 bg-white/80 p-6 shadow-sm shadow-maple-900/[0.04] dark:border-night-700 dark:bg-night-800/70"
+  >
+    <div class="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+      <span
+        class="inline-flex shrink-0 rounded-full bg-gradient-to-br from-ginkgo-400 via-maple-400 to-crimson-500 p-[3px]"
+      >
+        <img
+          src="/avatar.svg"
+          alt={`${SITE.author} 的头像`}
+          width="88"
+          height="88"
+          class="h-22 w-22 rounded-full bg-paper-50 dark:bg-night-900"
+          style="height:5.5rem;width:5.5rem"
+        />
+      </span>
+
+      <div class="min-w-0">
+        <p class="text-lg font-semibold text-bark-900 dark:text-night-100">
+          {SITE.author}
+          <span class="ml-1.5 font-mono text-sm font-normal text-bark-500 dark:text-night-400">
+            / {SITE.authorEn}
+          </span>
+        </p>
+        <p class="mt-1 text-sm font-medium text-maple-700 dark:text-maple-300">{SITE.tagline}</p>
+        <p class="mt-2 text-sm leading-relaxed text-bark-500 dark:text-night-400">{SITE.intro}</p>
+
+        <div class="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+          {
+            SOCIALS.map((social) => (
+              <a
+                href={social.href}
+                target={social.href.startsWith('http') ? '_blank' : undefined}
+                rel={social.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/60 px-2.5 py-1.5 text-xs text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
+              >
+                <Icon name={social.icon} size={14} />
+                {social.label}
+              </a>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 关于我正文（来自 src/content/pages/about.md） -->
+  {
+    Content ? (
+      <div class="prose prose-leaf mt-8 max-w-none">
+        <Content />
+      </div>
+    ) : (
+      <p class="mt-8 text-sm text-bark-500 dark:text-night-400">
+        关于我还没写。编辑 <code class="rounded bg-paper-200 px-1.5 py-0.5 font-mono text-xs dark:bg-night-700"
+          >src/content/pages/about.md</code
+        > 即可。
+      </p>
+    )
+  }
+
+  <!-- 关于本站：技术信息如实写，不放徽章 -->
+  <section class="mt-10 rounded-leaf border border-paper-200 bg-paper-100/70 p-5 dark:border-night-700 dark:bg-night-800/50">
+    <h2 class="flex items-center gap-2 text-sm font-semibold text-bark-900 dark:text-night-100">
+      <Icon name="monitor" size={16} />
+      关于本站
+    </h2>
+    <dl class="mt-3 space-y-2 text-sm">
+      <div class="flex flex-wrap gap-x-3">
+        <dt class="w-20 shrink-0 text-bark-500 dark:text-night-400">技术栈</dt>
+        <dd class="text-bark-700 dark:text-night-400">
+          Astro + Tailwind CSS + MDX，静态输出，部署在 Cloudflare Pages
+        </dd>
+      </div>
+      <div class="flex flex-wrap gap-x-3">
+        <dt class="w-20 shrink-0 text-bark-500 dark:text-night-400">搜索</dt>
+        <dd class="text-bark-700 dark:text-night-400">
+          Pagefind，索引在构建时生成，检索全在浏览器里跑
+        </dd>
+      </div>
+      <div class="flex flex-wrap gap-x-3">
+        <dt class="w-20 shrink-0 text-bark-500 dark:text-night-400">订阅</dt>
+        <dd class="flex flex-wrap gap-x-3 text-bark-700 dark:text-night-400">
+          <a
+            href="/rss.xml"
+            class="inline-flex items-center gap-1 text-maple-700 hover:text-maple-800 dark:text-maple-300"
+          >
+            <Icon name="rss" size={13} />RSS
+          </a>
+          <a
+            href="/sitemap-index.xml"
+            class="inline-flex items-center gap-1 text-maple-700 hover:text-maple-800 dark:text-maple-300"
+          >
+            <Icon name="link" size={13} />Sitemap
+          </a>
+        </dd>
+      </div>
+      <div class="flex flex-wrap gap-x-3">
+        <dt class="w-20 shrink-0 text-bark-500 dark:text-night-400">联系</dt>
+        <dd class="text-bark-700 dark:text-night-400">
+          <a
+            href={`mailto:${SITE.email}`}
+            class="text-maple-700 hover:text-maple-800 dark:text-maple-300"
+            >{SITE.email}</a
+          >
+        </dd>
+      </div>
+    </dl>
+  </section>
+</ListLayout>

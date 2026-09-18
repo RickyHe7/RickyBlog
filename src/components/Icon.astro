@@ -1,0 +1,82 @@
+---
+/**
+ * 内联 SVG 图标集。
+ *
+ * 刻意不引图标库：全套手写路径，零依赖、零版权问题、无额外网络请求。
+ * 线条图标统一 24×24、stroke-width 1.75、圆头圆角；品牌图标用填充。
+ */
+interface Props {
+  name: string;
+  size?: number;
+  class?: string;
+  /** 纯装饰图标应保持 aria-hidden；有语义时传 label */
+  label?: string;
+}
+
+const { name, size = 20, class: className = '', label } = Astro.props;
+
+const LEAF_D =
+  'M12.00 0.60Q12.98 3.15 13.63 8.95Q17.71 6.44 19.97 5.92Q19.06 8.04 15.88 11.63Q20.26 13.08 22.05 14.37Q19.91 16.39 15.21 17.19L12.90 19.40L12.90 23.40L11.10 23.40L11.10 19.40L8.79 17.19Q4.09 16.39 1.95 14.37Q3.74 13.08 8.12 11.63Q4.94 8.04 4.03 5.92Q6.29 6.44 10.37 8.95Q11.02 3.15 12.00 0.60Z';
+
+const LEAF = `<path d="${LEAF_D}" fill="currentColor" />`;
+
+const ICONS: Record<string, string> = {
+  // ---------------------------------------------------------------- 品牌（填充）
+  leaf: LEAF,
+  github: `<path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-.87-.01-1.71-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.93-2.35 4.8-4.58 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.05 10.05 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z" />`,
+  bilibili: `
+    <rect x="2.6" y="6.8" width="18.8" height="13" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" />
+    <path d="M7.2 3.6 9.8 6.8M16.8 3.6 14.2 6.8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+    <rect x="7.3" y="11" width="3.2" height="3.6" rx="1.1" fill="currentColor" />
+    <rect x="13.5" y="11" width="3.2" height="3.6" rx="1.1" fill="currentColor" />`,
+
+  // ---------------------------------------------------------------- 线条（描边）
+  sun: `<circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />`,
+  moon: `<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />`,
+  menu: `<path d="M4 7h16M4 12h16M4 17h16" />`,
+  close: `<path d="M6 6l12 12M18 6L6 18" />`,
+  search: `<circle cx="11" cy="11" r="7" /><path d="m20 20-3.6-3.6" />`,
+  rss: `<path d="M4 11a9 9 0 0 1 9 9" /><path d="M4 4a16 16 0 0 1 16 16" /><circle cx="5" cy="19" r="1" fill="currentColor" />`,
+  'arrow-left': `<path d="M19 12H5M12 19l-7-7 7-7" />`,
+  'arrow-right': `<path d="M5 12h14M12 5l7 7-7 7" />`,
+  tag: `<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 2.8 12V5a2 2 0 0 1 2-2h7a2 2 0 0 1 1.4.6l7.4 7.4a2 2 0 0 1 0 2.8Z" /><circle cx="7.6" cy="7.6" r="1.2" />`,
+  folder: `<path d="M3 7a2 2 0 0 1 2-2h3.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />`,
+  calendar: `<rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 11h18" />`,
+  clock: `<circle cx="12" cy="12" r="9" /><path d="M12 7v5.2l3.2 2" />`,
+  'chevron-right': `<path d="m9 6 6 6-6 6" />`,
+  'chevron-down': `<path d="m6 9 6 6 6-6" />`,
+  'external-link': `<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />`,
+  link: `<path d="M10.5 13.5a5 5 0 0 0 7.1 0l2.1-2.1a5 5 0 0 0-7.1-7.1l-1 1" /><path d="M13.5 10.5a5 5 0 0 0-7.1 0l-2.1 2.1a5 5 0 0 0 7.1 7.1l1-1" />`,
+  list: `<path d="M4 6h16M4 12h16M4 18h10" />`,
+  book: `<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v18H6.5A1.5 1.5 0 0 1 5 19.5Z" /><path d="M5 8h14" />`,
+  monitor: `<rect x="2.5" y="4" width="19" height="12.5" rx="2" /><path d="M8 20h8M12 16.5V20" />`,
+  sprout: `<path d="M12 21v-8" /><path d="M12 13c0-3.9 3.1-7 7-7 0 3.9-3.1 7-7 7Z" /><path d="M12 13c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5Z" />`,
+  send: `<path d="M21.5 2.5 10.8 13.2M21.5 2.5l-6.8 19-3.9-8.3-8.3-3.9Z" />`,
+  home: `<path d="M3 10.8 12 3l9 7.8" /><path d="M5.5 10v10.5h13V10" />`,
+  copy: `<rect x="9" y="9" width="11.5" height="11.5" rx="2" /><path d="M5.5 15V5.5a2 2 0 0 1 2-2H15" />`,
+  comment: `<path d="M21 12a8 8 0 0 1-8 8H8.5L3.5 23l1.6-5.3A8 8 0 1 1 21 12Z" />`,
+  hash: `<path d="M9 3.5 7.5 20.5M16.5 3.5 15 20.5M4 8.5h16M3.5 15.5h16" />`,
+  leafOutline: `<path d="${LEAF_D}" />`,
+};
+
+const body = ICONS[name] ?? ICONS.leaf;
+const filled = name === 'leaf' || name === 'github';
+const decorative = !label;
+---
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  class={className}
+  fill={filled ? 'currentColor' : 'none'}
+  stroke={filled ? 'none' : 'currentColor'}
+  stroke-width={filled ? undefined : 1.75}
+  stroke-linecap={filled ? undefined : 'round'}
+  stroke-linejoin={filled ? undefined : 'round'}
+  role={decorative ? undefined : 'img'}
+  aria-hidden={decorative ? 'true' : undefined}
+  aria-label={label}
+  set:html={body}
+/>

@@ -1,0 +1,69 @@
+---
+import ListLayout from '../layouts/ListLayout.astro';
+import Icon from '../components/Icon.astro';
+import PlaceholderNote from '../components/PlaceholderNote.astro';
+import { FRIEND_LINKS } from '../data/optional';
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+---
+
+<ListLayout
+  title="友链"
+  description="互相订阅的站点。数量不多，但都是真的在写。"
+  posts={posts}
+>
+  {
+    FRIEND_LINKS.length === 0 ? (
+      <PlaceholderNote
+        title="还没有添加友链"
+        message="友链涉及具体的人和站点，无法代为编造。想加的话，编辑 src/data/optional.ts 里的 FRIEND_LINKS 数组即可，页面会自动渲染成卡片。"
+        items={[
+          'name 与 href 必填，description 与 avatar 可选',
+          'avatar 放在 public/ 下（例如 /images/links/xxx.png），可以直接用对方的公开头像',
+          '建议在交换友链前先获得对方同意 —— 这也是不预先填假数据的原因',
+        ]}
+      />
+    ) : (
+      <ul class="grid gap-4 sm:grid-cols-2">
+        {FRIEND_LINKS.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="card-lift flex items-start gap-3 rounded-leaf border border-paper-200 bg-white/80 p-4 hover:border-maple-300 dark:border-night-700 dark:bg-night-800/70 dark:hover:border-maple-800"
+            >
+              {link.avatar ? (
+                <img
+                  src={link.avatar}
+                  alt=""
+                  width="40"
+                  height="40"
+                  loading="lazy"
+                  decoding="async"
+                  class="h-10 w-10 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ginkgo-400 via-maple-400 to-crimson-400 text-white">
+                  <Icon name="leaf" size={16} />
+                </span>
+              )}
+              <span class="min-w-0">
+                <span class="flex items-center gap-1.5 font-medium text-bark-900 dark:text-night-100">
+                  {link.name}
+                  <Icon name="external-link" size={13} class="opacity-50" />
+                </span>
+                {link.description && (
+                  <span class="mt-1 block text-sm leading-relaxed text-bark-500 dark:text-night-400">
+                    {link.description}
+                  </span>
+                )}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</ListLayout>

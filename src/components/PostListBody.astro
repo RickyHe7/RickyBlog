@@ -1,0 +1,37 @@
+---
+import PostCard from './PostCard.astro';
+import Pagination from './Pagination.astro';
+import type { Post } from '../lib/posts';
+
+interface Props {
+  posts: Post[];
+  currentPage: number;
+  totalPages: number;
+  basePath?: string;
+}
+
+const { posts, currentPage, totalPages, basePath = '/posts' } = Astro.props;
+---
+
+{
+  posts.length > 0 ? (
+    <>
+      <div class="space-y-4">
+        {posts.map((post) => (
+          <PostCard post={post} />
+        ))}
+      </div>
+      <Pagination currentPage={currentPage} totalPages={totalPages} basePath={basePath} />
+    </>
+  ) : (
+    <div class="rounded-leaf border border-dashed border-paper-300 bg-paper-100/60 p-8 text-center dark:border-night-600 dark:bg-night-800/50">
+      <p class="text-sm text-bark-500 dark:text-night-400">
+        这里还没有文章。在 <code class="rounded bg-paper-200 px-1.5 py-0.5 font-mono text-xs dark:bg-night-700"
+          >src/content/posts/</code
+        > 里新建一个 <code class="rounded bg-paper-200 px-1.5 py-0.5 font-mono text-xs dark:bg-night-700"
+          >.md</code
+        > 文件就会自动出现在这里。
+      </p>
+    </div>
+  )
+}

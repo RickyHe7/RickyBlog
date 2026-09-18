@@ -1,0 +1,44 @@
+---
+import ListLayout from '../../layouts/ListLayout.astro';
+import PostListBody from '../../components/PostListBody.astro';
+import { getAllCategories, getPostsByCategory, getPublishedPosts } from '../../lib/posts';
+import { absoluteUrl, breadcrumbJsonLd } from '../../lib/seo';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return getAllCategories(posts).map((category) => ({
+    params: { category: category.name },
+    props: { categoryName: category.name, count: category.count },
+  }));
+}
+
+interface Props {
+  categoryName: string;
+  count: number;
+}
+
+const { categoryName, count } = Astro.props;
+const allPosts = await getPublishedPosts();
+const categoryPosts = getPostsByCategory(allPosts, categoryName);
+const site = Astro.site;
+
+const jsonLd = [
+  breadcrumbJsonLd([
+    { name: '首页', url: absoluteUrl('/', site) },
+    { name: '分类', url: absoluteUrl('/categories', site) },
+    {
+      name: categoryName,
+      url: absoluteUrl(`/categories/${encodeURIComponent(categoryName)}`, site),
+    },
+  ]),
+];
+---
+
+<ListLayout
+  title={`分类：${categoryName}`}
+  description={`「${categoryName}」分类下共 ${count} 篇。`}
+  posts={allPosts}
+  jsonLd={jsonLd}
+>
+  <PostListBody posts={categoryPosts} currentPage={1} totalPages={1} />
+</ListLayout>

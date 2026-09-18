@@ -1,0 +1,66 @@
+---
+import type { Post } from '../lib/posts';
+import Icon from './Icon.astro';
+
+interface Props {
+  prev?: Post;
+  next?: Post;
+  /** 若文章属于某个系列，传系列名，用于提示跳转范围 */
+  series?: string;
+}
+
+const { prev, next, series } = Astro.props;
+const hasAny = Boolean(prev || next);
+---
+
+{
+  hasAny && (
+    <nav
+      aria-label={series ? `「${series}」系列内的上一篇 / 下一篇` : '上一篇 / 下一篇'}
+      class="mt-12 border-t border-paper-200 pt-6 dark:border-night-700"
+      data-pagefind-ignore
+    >
+      {series && (
+        <p class="mb-3 flex items-center gap-1.5 text-xs text-bark-500 dark:text-night-400">
+          <Icon name="book" size={13} />
+          同系列「{series}」内跳转
+        </p>
+      )}
+      <div class="grid gap-3 sm:grid-cols-2">
+        {prev ? (
+          <a
+            href={`/posts/${prev.id}`}
+            rel="prev"
+            class="card-lift group rounded-leaf border border-paper-200 bg-white/70 p-4 hover:border-maple-300 dark:border-night-700 dark:bg-night-800/60 dark:hover:border-maple-800"
+          >
+            <span class="flex items-center gap-1 text-xs text-bark-500 dark:text-night-400">
+              <Icon name="arrow-left" size={13} />
+              上一篇
+            </span>
+            <span class="mt-1.5 block font-medium leading-snug text-bark-900 transition-colors duration-150 group-hover:text-maple-700 dark:text-night-100 dark:group-hover:text-maple-300">
+              {prev.data.title}
+            </span>
+          </a>
+        ) : (
+          <span class="hidden sm:block" />
+        )}
+
+        {next && (
+          <a
+            href={`/posts/${next.id}`}
+            rel="next"
+            class="card-lift group rounded-leaf border border-paper-200 bg-white/70 p-4 text-right hover:border-maple-300 sm:col-start-2 dark:border-night-700 dark:bg-night-800/60 dark:hover:border-maple-800"
+          >
+            <span class="flex items-center justify-end gap-1 text-xs text-bark-500 dark:text-night-400">
+              下一篇
+              <Icon name="arrow-right" size={13} />
+            </span>
+            <span class="mt-1.5 block font-medium leading-snug text-bark-900 transition-colors duration-150 group-hover:text-maple-700 dark:text-night-100 dark:group-hover:text-maple-300">
+              {next.data.title}
+            </span>
+          </a>
+        )}
+      </div>
+    </nav>
+  )
+}
