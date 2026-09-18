@@ -42,35 +42,36 @@ Cloudflare Pages 有两种接入方式，它们对仓库的要求正好相反：
 
 ### 一次性准备
 
-**1. 在 GitHub 建仓库**
+**1. 在 GitHub 建仓库 —— ✅ 已完成**
 
-浏览器打开 https://github.com/new ，按下表填：
+仓库已建好：**https://github.com/RickyHe7/RickyBlog**（本地 remote 已指向它）。
+当时建仓库的取舍记录在这里，以后要重建时参考：
 
-| 字段 | 建议值 | 说明 |
+| 字段 | 取值 | 说明 |
 | --- | --- | --- |
-| Repository name | `RickyBlog` | 与本地目录同名，好认 |
-| Description | 随便写 | 例如「个人博客：小技巧 / 读书笔记 / 生活记录」 |
-| **Visibility** | **Public** | 见下面说明 |
-| Initialize with README | **不要勾** | 本地已经有 README 和首个提交了，勾了会冲突 |
-| Add .gitignore / license | **都不选** | 同上，本地已经准备好了 |
+| Repository name | `RickyBlog` | 与本地目录同名 |
+| **Visibility** | **Public** | 日后要开 Giscus 评论必须是公开仓库 |
+| Initialize with README | **不勾** | 本地已有 README，勾了会冲突 |
+| Add .gitignore / license | **都不选** | 同上 |
 
-**关于 Public 还是 Private：**
-
-- **Public**：源码公开。你的文章本体在 `src/content/posts/` 里，公开等于文章源码公开（但博客本身也是公开的，所以通常无所谓）。**而且以后要开 Giscus 评论必须是 Public 仓库**，所以推荐 Public。
-- **Private**：源码不公开，Cloudflare 那边需要额外授权 GitHub App 访问私有仓库。功能上没问题，但评论以后得再单独找一个公开仓库。
+如果要改成 Private：Cloudflare 那边需要额外授权 GitHub App 访问私有仓库，功能上没问题，
+但评论以后得再单独找一个公开仓库来承载 Discussions。
 
 **2. 把本地代码推上去**
 
-仓库建好后（**空仓库**，不要带任何初始化文件），把页面上显示的仓库地址发我，我来执行推送。
-或者你自己跑：
+本地仓库已经初始化好，remote 也已经指向 `https://github.com/RickyHe7/RickyBlog.git`，直接推：
 
 ```bash
 cd C:/Repository/Person/RickyBlog
-git remote add origin https://github.com/RickyHe7/RickyBlog.git   # 换成你的实际地址
 git push -u origin main
 ```
 
 首次推送会弹出浏览器让你登录 GitHub 授权（Git Credential Manager），点确认即可，之后不用再登。
+你机器上 GCM 已经存过 `RickyHe7` 账号，正常情况下点一下授权就完事。
+
+> **这一步必须在有桌面环境的终端里跑**（Windows Terminal / Git Bash / VS Code 终端都行）。
+> 在无人值守或非交互环境里执行会失败：git 会去调 `git credential-manager get` 取令牌，
+> 而 GCM 需要能弹窗/唤起浏览器，取不到就直接退出（表现为 `exit 128` 且没有任何报错信息）。
 
 **3. 在 Cloudflare 里接上**
 
