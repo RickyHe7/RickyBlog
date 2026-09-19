@@ -46,7 +46,12 @@ const fileEnv = loadEnv(process.env.NODE_ENV === 'production' ? 'production' : '
  * 优先级：环境变量 SITE_URL > `.env` 的 SITE_URL > 这里，方便临时用别的值构建。
  * ⚠️ 反过来说，Cloudflare 里那条 `SITE_URL` 如果值不对，会盖掉这里 —— 不确定就删掉它。
  */
-const CANONICAL_SITE = 'https://rickysblog.1174716217.workers.dev';
+const CANONICAL_SITE = 'https://blog.infinitest.cloud';
+
+/**
+ * 备用地址：`https://rickysblog.1174716217.workers.dev` 依然可以访问（Worker 的默认域名），
+ * 但**中国大陆直连打不开**（DNS 污染），所以它只作备用，不写进 canonical / sitemap。
+ */
 
 const SITE_URL = (process.env.SITE_URL || fileEnv.SITE_URL || CANONICAL_SITE).trim();
 

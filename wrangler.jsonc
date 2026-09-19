@@ -26,18 +26,25 @@
   }
 
   // ───────────────────────────────────────────────────────────────
-  // 绑自定义域名（解决中国大陆访问）
+  // 自定义域名：blog.infinitest.cloud
   //
-  // 前提：域名已经加进同一个 Cloudflare 账号（Add a site，改好 NS）。
-  //       没托管在 Cloudflare 的话，用网页控制台绑就够了，不需要这一段。
+  // 当前状态：**已在 Cloudflare 控制台绑定并生效**（访问返回 200），
+  //           所以下面这段保持注释 —— 不用它也能正常工作。
   //
-  // 取消下面注释、把域名换成你自己的，然后 git push 即可。
-  // 证书由 Cloudflare 自动签发，几分钟生效。
+  // 为什么保留且不启用：
+  //   `custom_domain: true` 会要求该域名的 zone 存在于同一个 Cloudflare 账号，
+  //   否则 `wrangler deploy` 会**直接失败**，把部署流水线搞挂。
+  //   控制台绑定已经达成目的，没必要为了一致性冒这个风险。
   //
-  // 绑完记得同步改 astro.config.mjs 里的 CANONICAL_SITE，
-  // 否则 sitemap / canonical / OG / RSS 还指着那个打不开的 workers.dev 地址。
+  // 什么时候才启用它：
+  //   - 想改成「声明式」管理域名（换域名时改这里 + `CANONICAL_SITE` 两处即可）
+  //   - 或者哪天控制台上的绑定丢了，想让部署自动补回来
+  //   启用前先确认 `infinitest.cloud` 已在本账号（Add a site 完成、NS 已生效）。
+  //
+  // 绑完/换完域名，**必须同步改** `astro.config.mjs` 的 `CANONICAL_SITE`，
+  // 否则 sitemap / canonical / OG / RSS 还指着旧地址（那个大陆打不开的 workers.dev）。
   // ───────────────────────────────────────────────────────────────
   // "routes": [
-  //   { "pattern": "blog.你的域名.com", "custom_domain": true }
+  //   { "pattern": "blog.infinitest.cloud", "custom_domain": true }
   // ]
 }

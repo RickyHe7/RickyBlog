@@ -6,8 +6,8 @@
 
 - **本地预览**（`npm run dev` / `npm run preview`）：**只有你这台机器能看到。**
   `localhost` 这个地址在别人电脑上，指向的是**别人自己的电脑**。
-- **线上部署**：**已经部署好了** → `https://rickysblog.1174716217.workers.dev`。
-  境外任何人都能打开；**只有中国大陆直连打不开**（原因与解决办法见下）。
+- **线上部署**：**已经上线了** → **https://blog.infinitest.cloud**
+  （备用地址 `https://rickysblog.1174716217.workers.dev` 仍可访问，但**大陆直连打不开**）
 
 本地预览有四种程度，按投入从小到大排：
 
@@ -16,19 +16,22 @@
 | 本机预览 | 只有你自己 | `http://localhost:4321` | `npm run build && npm run preview` | 失效 |
 | **局域网** | 同一 Wi-Fi 下的设备（手机、同办公室同事） | `http://192.168.1.236:4321` | `npm run preview:lan` | 失效 |
 | 临时公网隧道 | 任何拿到链接的人 | 随机 `https://xxx.trycloudflare.com` | 见文末 | 失效 |
-| **正式部署** | 任何人，长期 | 固定域名 | 见下文 | 长期有效 |
+| **正式部署** | 任何人，长期 | **`https://blog.infinitest.cloud`** | 见下文 | 长期有效 |
 
 > 局域网方式最适合**用手机验证移动端布局** —— 手机上输入 `http://192.168.1.236:4321` 即可。
 > 你的局域网 IP 会变（换网络、路由器重新分配），以 `npm run preview:lan` 启动时打印的 Network 那一行为准。
 > 首次启动 Windows 可能弹出防火墙询问，要允许「专用网络」访问才能看到。
 
-> ### ⚠️ 已经上线了，但中国大陆打不开？
+> ### ✅ 中国大陆访问问题 —— 已解决
 >
-> 站点已在 `https://rickysblog.1174716217.workers.dev` 正常运行（境外抓取验证过，页面 / RSS /
-> sitemap / 搜索索引全部正常），但**中国大陆直连打不开，挂代理才能访问**。
+> 正式地址：**`https://blog.infinitest.cloud`**（自有域名，大陆可直连）。
 >
-> 这不是配置错误 —— `*.workers.dev` 这个域名本身在中国大陆被 DNS 污染。
-> **解决办法见下方〈让中国大陆也能访问〉一节**，那是现在最值得花时间的地方。
+> 历史背景：最初部署在 `*.workers.dev` 这个 Cloudflare 免费二级域名上，它在中国大陆被
+> **DNS 污染**，表现为「挂代理能开、关掉 VPN 打不开」。**这与配置无关**，任何项目用
+> 那个域名都一样。已通过绑定自有域名解决。
+>
+> 完整的原因分析、当初的三条备选路线、以及想要更快时的进阶优化，见下方
+> 〈让中国大陆也能访问〉一节。
 
 ---
 
@@ -44,18 +47,21 @@ Cloudflare Pages 有两种接入方式，它们对仓库的要求正好相反：
 **本项目当前走 Git 集成**（见下一节）。代价是必须有一个 GitHub 仓库 —— 也就是说先前「不建仓库」那条决定已作废。
 如果哪天不想再维护仓库，成本很低：`npm run deploy` 一条命令直接上传 `dist`，不用 Cloudflare 帮你构建。
 
-> 无论是集成还是直传，**域名问题都一样**：都会拿到一个被大陆污染的 Cloudflare 免费二级域名，
-> 解决办法都指向同一节 ——〈让中国大陆也能访问〉。
+> 无论集成还是直传，**域名都要单独处理**：默认拿到的是 Cloudflare 免费二级域名
+> （`*.workers.dev` / `*.pages.dev`），在大陆被污染。解决办法统一见
+> 〈让中国大陆也能访问〉——本项目已通过绑定自有域名解决。
 
 ---
 
 ## 当前选择：Cloudflare **Workers** + Git 集成
 
-> 实际部署走的是这条路，地址形如 **`https://rickysblog.1174716217.workers.dev`**。
+> 实际部署走的是这条路。正式地址 **`https://blog.infinitest.cloud`**
+> （自有域名绑定到 Worker）；备用地址 `https://rickysblog.1174716217.workers.dev`
+> 仍可访问，但**大陆直连打不开**，因此不写进 canonical / sitemap。
 >
-> 注意 `workers.dev` 而不是 `pages.dev` —— 这是 **Workers**，不是 Pages。两个产品不一样：
-> **Workers 托管静态站点时必须有一份 `wrangler.jsonc`** 告诉它构建产物在哪个目录，
-> 否则 `npx wrangler deploy` 会因为找不到入口而失败，或者部署出一个什么都返回不了的空壳。
+> 注意 Worker 的默认域名是 `workers.dev` 而不是 `pages.dev` —— 这是 **Workers**，不是 Pages。
+> 两个产品不一样：**Workers 托管静态站点时必须有一份 `wrangler.jsonc`** 告诉它构建产物在
+> 哪个目录，否则 `npx wrangler deploy` 会因为找不到入口而失败，或者部署出一个什么都返回不了的空壳。
 > 这个文件已经在仓库里了（`wrangler.jsonc`，`assets.directory = "./dist"`）。
 
 > 代价要提前说清楚：这条路**必须有一个 GitHub 仓库**，也就是说最初「不建仓库」那条决定作废了。
@@ -127,7 +133,7 @@ Settings → **Environment variables** → 选 **Production**（要对 Preview �
 | 变量 | 值 | 必填 | 作用 |
 | --- | --- | --- | --- |
 | `NODE_VERSION` | `22` | 保险项 | Cloudflare Pages 构建镜像**默认已经是 Node 22.16.0**，本来就满足 Astro 的 ≥22.12.0。项目里也放了 `.nvmrc`（内容 `22`），Cloudflare 会读它。所以这条基本是多余的，设了也无害 |
-| `SITE_URL` | `https://rickysblog.1174716217.workers.dev` | 可选 | sitemap / canonical / OG / RSS 的绝对地址。**现在已写死在 `astro.config.mjs` 的 `CANONICAL_SITE` 里**，所以不设也对。设了会覆盖它（优先级：环境变量 > `.env` > `CANONICAL_SITE`）。**注意**：如果这里的值和你的真实地址不一致，反而会把站点搞坏 —— 不确定就删掉这一条 |
+| `SITE_URL` | `https://blog.infinitest.cloud` | 可选 | sitemap / canonical / OG / RSS 的绝对地址。**现在已写死在 `astro.config.mjs` 的 `CANONICAL_SITE` 里**，所以不设也对。设了会覆盖它（优先级：环境变量 > `.env` > `CANONICAL_SITE`）。**注意**：如果这里的值和你的真实地址不一致，反而会把站点搞坏 —— 不确定就删掉这一条 |
 | `PUBLIC_GISCUS_REPO` | 如 `RickyHe7/RickyBlog` | 可选 | 评论，四个都填才显示 |
 | `PUBLIC_GISCUS_REPO_ID` | giscus.app 上取 | 可选 | 同上 |
 | `PUBLIC_GISCUS_CATEGORY` | 如 `Announcements` | 可选 | 同上 |
@@ -213,24 +219,24 @@ npm run deploy                                       # 以后每次发布
 
 1. **站点地址 —— ✅ 已配好，但要确认一件事**
 
-   真实地址已写死在 `astro.config.mjs` 的 `CANONICAL_SITE`
-   （`https://rickysblog.1174716217.workers.dev`）。构建实测验证过：地址正确传播到
-   **29 个产物**（每个页面的 canonical + og:url、`robots.txt`、`rss.xml`、`sitemap`）。
+   正式地址写死在 `astro.config.mjs` 的 `CANONICAL_SITE`：**`https://blog.infinitest.cloud`**。
+   构建实测验证过：地址正确传播到全部产物（每个页面的 canonical + og:url、`robots.txt`、
+   `rss.xml`、`sitemap`）。
 
    优先级是 **`环境变量 SITE_URL` > `.env` > `CANONICAL_SITE`**。
 
    > ⚠️ **所以在 Cloudflare 里加过 `SITE_URL` 的话，去确认它的值。**
-   > 它的优先级高于配置里的正确值 —— 如果里面填的不是当前真实地址，会盖掉正确的那个。
-   > 不确定就**直接删掉那条**，让配置生效。
+   > 它的优先级高于配置里的正确值 —— 如果里面填的不是 `https://blog.infinitest.cloud`，
+   > **会盖掉正确的那个**。不确定就**直接删掉那条**，让配置生效。
 
-   **换域名时只改 `CANONICAL_SITE` 这一处**（见上一节〈换域名后需要改的地方〉）。
+   **换域名时只改 `CANONICAL_SITE` 这一处**（见下文〈换域名后需要改的地方〉）。
 
 2. **逐项核对线上**（`build + preview` 能过的，线上不一定）
 
    一条命令即可，不用手动点：
 
    ```powershell
-   .\scripts\check-live.ps1 -Base https://rickysblog.1174716217.workers.dev
+   .\scripts\check-live.ps1 -Base https://blog.infinitest.cloud
    ```
 
    它会检查 24 条路由是否可达、404 是否返回 404、canonical / robots / sitemap / rss 里的
@@ -256,9 +262,14 @@ npm run deploy                                       # 以后每次发布
 
 ---
 
-## 让中国大陆也能访问（最关键的一步）
+## 让中国大陆也能访问（已解决，留档备查）
 
-### 现状：站是好的，域名不行
+> ### ✅ 当前状态：已通过方案 B 解决
+>
+> 正式地址 **`https://blog.infinitest.cloud`**（自有域名绑定到 Worker），大陆可直连。
+> 下面保留完整的排查过程与备选路线，供以后换域名或想进一步提速时参考。
+
+### 当初的问题：站是好的，域名不行
 
 | | 结果 |
 | --- | --- |
@@ -286,18 +297,33 @@ npm run deploy                                       # 以后每次发布
 
 ### 三条路，按投入排序
 
-| 方案 | 国内能打开吗 | 花钱 | 时间 | 适合 |
+| 方案 | 国内能打开吗 | 花钱 | 时间 | 状态 |
 | --- | --- | --- | --- | --- |
-| **A. 保持现状** | ❌ 不能（除非对方自己挂代理） | 0 | — | 纯个人记录，不打算给国内的人看 |
-| **B. 买域名绑到 Cloudflare** | ⚠️ **能打开**，但速度一般 | 域名约 ¥30–80/年 | 当天 | **推荐先走这条** |
-| **C. 域名 + 备案 + 大陆加速** | ✅ 稳定、快 | 域名 + 国内接入资源 | 备案 1–2 周 | 想让国内读者长期稳定访问 |
+| A. 保持现状 | ❌ 不能（除非对方自己挂代理） | 0 | — | 未采用 |
+| **B. 买域名绑到 Cloudflare** | ⚠️ **能打开**，但速度一般 | 域名约 ¥30–80/年 | 当天 | ✅ **已采用** |
+| C. 域名 + 备案 + 大陆加速 | ✅ 稳定、快 | 域名 + 国内接入资源 | 备案 1–2 周 | 备选，想更快再走 |
 
 ---
 
-### 方案 B：绑一个自己的域名（推荐先做，当天完成）
+### 方案 B：绑一个自己的域名（✅ 已完成）
 
 **原理**：被封的是 `*.workers.dev` 这个**共享域名**，不是你的站。
 换成你自己的域名之后，内容一模一样，只是入口换了。
+
+**实际执行记录**：
+
+| 步骤 | 结果 |
+| --- | --- |
+| 1. 买域名 | `infinitest.cloud` |
+| 2. 托管到 Cloudflare | ✅ 已加站点并改 NS |
+| 3. 给 Worker 绑自定义域名 | ✅ `blog.infinitest.cloud` |
+| 4. 改 `CANONICAL_SITE` 并推送 | 见下 —— 必须做，否则 SEO 元数据仍指向旧域名 |
+
+**第 4 步为什么必须做**：不改的话，页面里的 canonical、`sitemap`、`rss.xml`、OG 标签
+写的还是那个**大陆打不开的 `workers.dev` 地址**。站能开，但搜索引擎收录的、RSS 里列的
+全是错的地址 —— 等于 SEO 白做。
+
+#### 通用流程（留档：以后换域名照这个走）
 
 **1. 买域名**
 
@@ -318,27 +344,29 @@ Dashboard → **Add a site** → 填域名 → 选 **Free** 计划 → 它会给
 
 Workers & Pages → 你的 Worker（`rickysblog`）→ **Settings** → **Domains & Routes**
 （也可能显示为 **Triggers → Custom Domains**）→ **Add** → **Custom Domain** →
-填一个子域名，例如 `blog.你的域名.com`。
+填子域名，例如 `blog.infinitest.cloud`。
 
 Cloudflare 会自动创建 DNS 记录并签发证书，几分钟后生效。
 
 **4. 改地址，推一次**
 
-改 `astro.config.mjs` 里的 `CANONICAL_SITE`：
+改 `astro.config.mjs` 里的 `CANONICAL_SITE`（**代码里唯一写死域名的地方**）：
 
 ```js
-const CANONICAL_SITE = 'https://blog.你的域名.com';
+const CANONICAL_SITE = 'https://blog.infinitest.cloud';
 ```
 
-`git push` 一次即可（`git push` 会触发 Cloudflare 重新构建）。
-这一步是为了让 sitemap / canonical / OG / RSS 指向新域名 —— 不改的话搜索引擎收录的
-还是那个打不开的 `workers.dev` 地址。
+`git push` 一次即可（会触发 Cloudflare 重新构建）。
+不改的话 sitemap / canonical / OG / RSS 指向的还是那个打不开的 `workers.dev` 地址。
 
 **5. 核对**
 
 ```powershell
-.\scripts\check-live.ps1 -Base https://blog.你的域名.com
+.\scripts\check-live.ps1 -Base https://blog.infinitest.cloud
 ```
+
+它会 24 条路由逐条打通、检查 404、canonical / robots / sitemap / rss 里的域名是否已切换、
+Pagefind 索引有没有部署，并确认这个地址确实是本站（查首页 `#indexCard`）。
 
 #### ⚠️ 方案 B 的预期管理（别抱太高期望）
 

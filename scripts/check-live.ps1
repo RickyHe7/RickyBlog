@@ -38,11 +38,23 @@ function Get-Page {
             Content = $r.Content
         }
     } catch {
+        # PowerShell 5.1 的 Invoke-WebRequest 在 4xx/5xx 上会**抛异常**，
+        # 所以非 200 的响应体只能从这里捞 —— 之前这里直接把 Content 置空，
+        # 导致 404 页那一项永远拿不到正文，把「我们自己的 404」误报成「托管方默认 404」。
         $code = 'ERR'
+        $body = ''
         if ($_.Exception.Response) {
             try { $code = [string]([int]$_.Exception.Response.StatusCode) } catch { $code = 'ERR' }
+            try {
+                $stream = $_.Exception.Response.GetResponseStream()
+                if ($stream) {
+                    $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::UTF8)
+                    $body = $reader.ReadToEnd()
+                    $reader.Dispose()
+                }
+            } catch { $body = '' }
         }
-        return [pscustomobject]@{ Ok = $false; Status = $code; Content = '' }
+        return [pscustomobject]@{ Ok = $false; Status = $code; Content = $body }
     }
 }
 
@@ -89,13 +101,16 @@ $has404 = ($bogus.Status -eq '404')
 Report $has404 '/no-such-page-xyz 应返回 404' ("HTTP " + $bogus.Status)
 if ($has404) {
     # 只是提醒，不算失败：返回哪个 404 页面由托管方决定。
-    # Cloudflare Pages 会返回我们的 dist/404.html；
-    # 而 astro preview 有自己的默认 404 响应体，所以本地预览下这项通常是 WARN。
-    $isOurs = ($bogus.Content -match '404') -and ($bogus.Content -match 'Ricky')
+    # Cloudflare（Workers assets 的 not_found_handling=404-page）会返回我们的 dist/404.html；
+    # 本地 astro preview 有自己的默认 404 响应体，所以那种环境下这项通常是 WARN。
+    #
+    # 判据用页面里真实存在的文字，不要用裸的 "404" ——
+    # 正文里不一定出现数字 404（标题是「页面不存在」）。
+    $isOurs = ($bogus.Content -match 'Ricky') -and ($bogus.Content -match '页面不存在|这片叶子被风吹走了')
     if ($isOurs) {
         Report $true '404 页是我们自定义的那一版' '含站点标识'
     } else {
-        Warn '返回的是托管方默认 404（非致命）' 'Cloudflare Pages 会用我们的 dist/404.html'
+        Warn '返回的是托管方默认 404（非致命）' 'Cloudflare 应返回我们的 dist/404.html'
     }
 }
 
@@ -133,8 +148,10 @@ if ($failures.Count -eq 0) {
     foreach ($f in $failures) { Write-Output ("  - " + $f) }
     Write-Output ""
     Write-Output "常见原因："
-    Write-Output "  1. SITE_URL 没设 → canonical / sitemap / robots 会指向占位域名"
-    Write-Output "  2. 在 Cloudflare 改完环境变量但没重新部署 → 值是构建期内联进 HTML 的"
-    Write-Output "  3. NODE_VERSION 不是 22 → 构建失败，去 Pages 的构建日志里看"
+    Write-Output "  1. 换了域名但还没重新构建/推送 —— 元数据是构建时写进 HTML 的（本站最常见的原因）"
+    Write-Output "  2. Cloudflare 里的 SITE_URL 值不对 → 优先级比 astro.config.mjs 的 CANONICAL_SITE 高，会盖掉它"
+    Write-Output "  3. 构建根本没成功 → 去 Cloudflare 的 Deployments 里看那次构建日志"
+    Write-Output ""
+    Write-Output "排查入口：astro.config.mjs 的 CANONICAL_SITE 是代码里唯一写死域名的地方"
 }
 Write-Output ""

@@ -175,24 +175,26 @@ npm run preview
 ## 部署
 
 走 **Cloudflare Workers · Git 集成**：推到 GitHub，Cloudflare 自动构建发布。
-线上地址：**https://rickysblog.1174716217.workers.dev**
+
+**线上地址：https://blog.infinitest.cloud** —— 自有域名，中国大陆可直连。
+（Worker 默认域名 `https://rickysblog.1174716217.workers.dev` 仍可访问，但大陆打不开，仅作备用。）
 **详细步骤在 [DEPLOY.md](./DEPLOY.md)**，这里只给要点。
 
-> 是 **Workers** 不是 Pages（地址是 `workers.dev` 而非 `pages.dev`）。区别在于
+> 是 **Workers** 不是 Pages（默认域名是 `workers.dev` 而非 `pages.dev`）。区别在于
 > **Workers 托管静态站点必须有 `wrangler.jsonc`** 指明构建产物目录 —— 仓库里已经放好了
 > （`assets.directory = "./dist"`，未知路径返回 `404.html`）。少了它 `wrangler deploy` 会失败。
 
-> ### ⚠️ 中国大陆直连打不开（已知，非配置错误）
+> ### ✅ 中国大陆访问：已解决
 >
-> `*.workers.dev` 这个域名在中国大陆被 DNS 污染，**直连打不开，挂代理才能访问**。
-> 换成任何项目、任何人用这个域名，结果都一样。
+> 最初部署在 `*.workers.dev` 这个 Cloudflare 免费二级域名上，它在中国大陆被 **DNS 污染**，
+> 表现为「挂代理能开、关掉 VPN 打不开」——**与配置无关**，任何项目用那个域名都一样。
 >
-> **解决方法是绑一个自己的域名** —— 分「只买域名」（当天可用，速度一般）和
-> 「域名 + ICP 备案」（国内又快又稳，但要 1–2 周）两条路。
-> 完整对比与逐步操作见 **[DEPLOY.md → 让中国大陆也能访问](./DEPLOY.md#让中国大陆也能访问最关键的一步)**。
+> 已通过**绑定自有域名** `blog.infinitest.cloud` 解决。
+> 完整的原因分析、当初的三条备选路线，以及想要更快时的进阶优化（优选 IP + DNS 分线路），
+> 见 **[DEPLOY.md → 让中国大陆也能访问](./DEPLOY.md#让中国大陆也能访问已解决留档备查)**。
 >
-> 绑完域名记得同步改 `astro.config.mjs` 里的 `CANONICAL_SITE`，否则 sitemap / canonical
-> 还指着那个打不开的旧地址。
+> ⚠️ **换域名时只需改 `astro.config.mjs` 的 `CANONICAL_SITE` 这一处**（代码里没有第二处），
+> 否则 sitemap / canonical / RSS 还指着旧域名。
 
 1. 在 GitHub 建一个仓库（**空仓库**，不要勾 README / gitignore / license）
 2. 本地推送：
@@ -209,7 +211,7 @@ npm run preview
 
    | 变量 | 值 | 必填 |
    | --- | --- | --- |
-   | `SITE_URL` | `https://rickysblog.1174716217.workers.dev` | 可选。不设也行；**设错反而会坏事**，不确定就删掉 |
+   | `SITE_URL` | `https://blog.infinitest.cloud` | 可选。不设也行；**设错反而会坏事**，不确定就删掉 |
    | `NODE_VERSION` | `22` | 可选。Workers 构建镜像默认已是 Node 22.16.0，项目里也有 `.nvmrc` |
    | `PUBLIC_GISCUS_*`、`PUBLIC_UMAMI_*`、`PUBLIC_BUTTONDOWN_USERNAME` | 见 `.env.example` | 可选，不填则对应区块不渲染 |
 
@@ -219,7 +221,7 @@ npm run preview
    > 这些值是构建期被内联进 HTML 的，不重新构建等于没改。
 
    > **别把 `SITE_URL` 填成 `https://rickyblog.pages.dev`** —— 那个域名属于别人的博客（实测确认）。
-   > `SITE_URL` 留空时构建会回退到保留域名 `rickyblog.example.com` 并打警告，不会悄悄指错。
+   > 留空时会用 `astro.config.mjs` 的 `CANONICAL_SITE`，不会悄悄指错。
 
    > 本地构建读 `.env`（靠 `astro.config.mjs` 里的 `loadEnv()`），
    > 线上构建读 Pages 的环境变量 —— `SITE_URL` 两条路都支持，细节见 DEPLOY.md。
@@ -255,8 +257,8 @@ npm run preview
 
 ## 已知限制与待办
 
-- **🇨🇳 中国大陆直连打不开**（最优先）：`*.workers.dev` 被 DNS 污染，需要绑自有域名才能解决。见上方〈部署〉的警告框
-- **ICP 备案号未落地**：若走备案路线，通过后需在页脚展示备案号。**页脚目前没有这个位置**，需要新增
+- **🇨🇳 中国大陆访问** —— ✅ 已解决：绑定了自有域名 `blog.infinitest.cloud`（原先的 `*.workers.dev` 被 DNS 污染，大陆打不开）。若日后想更快（Cloudflare 免费版晚高峰偏慢），可走「优选 IP + DNS 分线路」，见 DEPLOY.md
+- **ICP 备案号未落地**：若日后走备案路线，通过后需在页脚展示备案号。**页脚目前没有这个位置**，需要新增
 - **圆角与动效**：卡片 `rounded-xl`（12px）、按钮 `rounded-lg`、标签 `rounded-full`；过渡 150–200ms，无滚动视差
 - **`/projects` `/links` `/uses` `/now`** 目前是空状态页：这些内容只有本人能提供，页面已经接好数据结构，填空即可
 - **`about.md`** 的「我在做什么」段落留了骨架待补
