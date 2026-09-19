@@ -229,7 +229,7 @@ npm run deploy                                       # 以后每次发布
    > 它的优先级高于配置里的正确值 —— 如果里面填的不是 `https://blog.infinitest.cloud`，
    > **会盖掉正确的那个**。不确定就**直接删掉那条**，让配置生效。
 
-   **换域名时只改 `CANONICAL_SITE` 这一处**（见下文〈换域名后需要改的地方〉）。
+   **换域名时只改 `CANONICAL_SITE` 这一处**（完整清单见〈以后换域名怎么办〉）。
 
 2. **逐项核对线上**（`build + preview` 能过的，线上不一定）
 
@@ -323,7 +323,10 @@ npm run deploy                                       # 以后每次发布
 写的还是那个**大陆打不开的 `workers.dev` 地址**。站能开，但搜索引擎收录的、RSS 里列的
 全是错的地址 —— 等于 SEO 白做。
 
-#### 通用流程（留档：以后换域名照这个走）
+#### 通用流程（留档：绑一个新域名照这个走）
+
+> 这是**首次绑定**的从零流程。如果是「已经有域名在跑，想换成另一个」，
+> 见后面的〈以后换域名怎么办〉——那边多了旧域名 301、SITE_URL 覆盖等注意事项。
 
 **1. 买域名**
 
@@ -420,19 +423,126 @@ Cloudflare 免费版在中国大陆**没有专门优化**：默认可能把你�
 
 ---
 
-### 换域名后需要改的地方（备忘）
+---
 
-**代码里只有一处写死域名** —— `astro.config.mjs` 的 `CANONICAL_SITE`。
-（`src/lib/seo.ts` 不再有兜底域名：拿不到 `Astro.site` 时会**直接报错**，
-而不是退回某个可能写错的域名。这是刻意的 —— 静默指错比构建失败危险得多。）
+## 以后换域名怎么办
 
-| 位置 | 改什么 |
+**先说结论：代码只需要改一行。**
+
+域名已经收敛到 `astro.config.mjs` 的 `CANONICAL_SITE`，全站 canonical / sitemap / OG /
+RSS / robots 都从它推导。实测确认：**`src/` 目录里零处出现当前域名**（`grep` 过），
+`.env` 里的 `SITE_URL` 也是留空的（回落到配置）。
+
+> 为什么刻意不留兜底域名：早期 `src/lib/seo.ts` 有一个兜底 origin，后果是「域名写错时不报错、
+> 静默把 canonical 指向错域名」——踩过两次。现在拿不到 `Astro.site` 会**直接报错**。
+> 静默指错比构建失败危险得多。
+
+### 两种情况
+
+| 情况 | 例子 | 要买新域名吗 | 要动 Cloudflare 的 zone 吗 |
+| --- | --- | --- | --- |
+| **A. 换子域名**（同域名下） | `blog.infinitest.cloud` → `www.infinitest.cloud` | 不用 | 不用，zone 已有 |
+| **B. 换整个域名** | `infinitest.cloud` → `新域名.com` | 要 | 要：Add a site + 改 NS |
+
+### 五步
+
+**1. Cloudflare：把新域名绑到 Worker**
+
+- **情况 B** 先做：Dashboard → **Add a site** → 加新域名 → 去注册商改 NS → 等生效
+- 两种情况都要：Worker（`rickysblog`）→ **Settings** → **Domains & Routes** →
+  **Add** → **Custom Domain** → 填新域名。证书自动签发，几分钟生效
+
+**2. 代码：改一行**
+
+```js
+// astro.config.mjs
+const CANONICAL_SITE = 'https://新域名';
+```
+
+**3. 检查 Cloudflare 里的 `SITE_URL`**
+
+之前加过这个环境变量的话，**改成新域名，或者直接删掉那条**。
+
+> ⚠️ 这是换域名**唯一会让"代码改了却不生效"的原因** —— 它的优先级高于 `CANONICAL_SITE`，
+> 留着旧值会把改好的配置整个盖掉。
+
+**4. 推送**
+
+```bash
+git push
+```
+
+Cloudflare 自动重新构建，canonical / sitemap / RSS / OG 全部跟着切。
+**不推送 = 站能在新域名打开，但 SEO 元数据还指着旧域名**（这次切到 `infinitest.cloud`
+时就先遇到了这个状态，实测确认过）。
+
+**5. 验证**
+
+```powershell
+.\scripts\check-live.ps1 -Base https://新域名
+```
+
+重点看 `首页 canonical 用真实域名` 和 `robots.txt 的 Sitemap 指向本站` 这两项。
+
+### ⚠️ 旧域名要处理，否则是重复内容
+
+同一个站有两个地址都能打开，搜索引擎得自己猜哪个是正主。canonical 指向新域名能**缓解**，
+但 **301 才是干净做法**。
+
+**如果旧域名是你自己的域名（有 zone）：**
+
+Rules → **Redirect Rules** → Create → Single Redirect：
+
+| 字段 | 值 |
 | --- | --- |
-| **`astro.config.mjs` → `CANONICAL_SITE`** | 新域名。**改这一行就够了**，全站 canonical / sitemap / OG / RSS 都跟着变 |
-| `wrangler.jsonc` → `name` | 仅当 Worker 名字也变了才改 |
-| `wrangler.jsonc` → `routes` | 绑了自定义域名后可以取消注释；也可以不动，只在控制台绑 |
-| Cloudflare → Domains & Routes | 加自定义域名（在网页上做） |
-| Cloudflare → `SITE_URL` 环境变量 | 之前加过的话，**改成新域名或直接删掉**。它的优先级比配置高，留着旧值会盖掉正确的 |
+| When | Hostname equals `旧域名` |
+| Then | Dynamic redirect → `concat("https://新域名", http.path)` |
+| Status | **301**（永久） |
+
+> 实测查过：**Single Redirects 在所有计划都可用，Free 每个 zone 10 条**，支持通配符
+> （不支持正则，那是 Business 起）。前提是**旧域名的 DNS 必须走 Cloudflare 代理**（橙云）。
+> 另外它不是 Bulk Redirects —— 后者是账号级、免费 1 万条静态映射，本项目用不上。
+
+**如果旧域名是平台分配的、你没有 zone**（比如当前这个 `rickysblog.1174716217.workers.dev`）：
+
+**没法加重定向规则**（没有 zone 可挂）。两个选择：
+
+- **推荐**：Worker → Settings → **Domains & Routes** → 关掉 `workers.dev` 路由，
+  旧地址直接停止服务（避免重复内容）
+- 或者不管它 —— canonical 已指向新域名，搜索引擎会自己收敛
+
+> ⚠️ 关掉 `workers.dev` 之前确认新域名已经正常，否则会把自己锁在外面。
+
+### 不用动的东西
+
+| 东西 | 为什么 |
+| --- | --- |
+| **Giscus 评论** | 用的是 `data-mapping="pathname"`（已确认），只跟路径有关，换域名不丢评论 |
+| **Umami 统计** | 按页面路径统计，与域名无关 |
+| **RSS 订阅者** | 旧域名 301 后阅读器会跟着跳转（订阅数可能短期波动） |
+| 本地开发 / 构建 | `npm run dev` / `npm run build` 不依赖线上域名 |
+| `wrangler.jsonc` | `name` 只在 Worker 名也变时才改；`routes` 那段保持注释就行 |
+
+### ⚠️ 会影响备案
+
+ICP 备案是**按域名**的：
+
+- 换域名要**为新域名重新备案**，不是改一下就行
+- 旧的备案号要记得注销，否则可能被列入异常
+
+### 收尾清单
+
+- [ ] 新域名能打开 —— **手机连流量、关掉 VPN** 测一次（这才算数）
+- [ ] `.\scripts\check-live.ps1 -Base https://新域名` 全绿
+- [ ] 旧域名 301 到新域名（或关掉 `workers.dev` 路由）
+- [ ] Google Search Console / Bing Webmaster 提交新的 `sitemap-index.xml`
+- [ ] 检查正文/关于页里手写过的旧链接（`src/content/**`、`src/consts.ts`）
+- [ ] 更新外部地方的旧链接：签名档、友链、社交主页
+
+### 我能替你做 / 不能做
+
+改 `CANONICAL_SITE`、更新文档、上线后逐项核对 → **给我域名就行**。
+买域名（实名 + 付款）、在控制台绑域名、提交备案（身份证 + 人脸核验）→ **必须你本人**。
 
 ---
 

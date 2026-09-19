@@ -195,6 +195,7 @@ npm run preview
 >
 > ⚠️ **换域名时只需改 `astro.config.mjs` 的 `CANONICAL_SITE` 这一处**（代码里没有第二处），
 > 否则 sitemap / canonical / RSS 还指着旧域名。
+> 完整清单（含旧域名 301、Cloudflare 变量覆盖、备案影响）见 **[DEPLOY.md → 以后换域名怎么办](./DEPLOY.md#以后换域名怎么办)**。
 
 1. 在 GitHub 建一个仓库（**空仓库**，不要勾 README / gitignore / license）
 2. 本地推送：
