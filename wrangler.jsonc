@@ -10,7 +10,10 @@
   //   https://rickysblog.1174716217.workers.dev
   //   这里的 rickysblog 就是 name，1174716217 是你账号的子域。
   //
-  // 换地址要同时改两处：这里的 name，以及 astro.config.mjs 里的 SITE_URL。
+  // ⚠️ 中国大陆访问问题：*.workers.dev 在大陆被 DNS 污染，直连打不开。
+  //   解决办法是绑一个自己的域名 —— 也就是取消注释下面的 routes，见 DEPLOY.md。
+  //
+  // 换地址要同时改两处：这里的 name，以及 astro.config.mjs 里的 CANONICAL_SITE。
   "name": "rickysblog",
   "compatibility_date": "2026-09-19",
   "assets": {
@@ -21,4 +24,20 @@
     // 别改成 single-page-application —— 那是给 SPA 用的，会把所有路径都返回首页。
     "not_found_handling": "404-page"
   }
+
+  // ───────────────────────────────────────────────────────────────
+  // 绑自定义域名（解决中国大陆访问）
+  //
+  // 前提：域名已经加进同一个 Cloudflare 账号（Add a site，改好 NS）。
+  //       没托管在 Cloudflare 的话，用网页控制台绑就够了，不需要这一段。
+  //
+  // 取消下面注释、把域名换成你自己的，然后 git push 即可。
+  // 证书由 Cloudflare 自动签发，几分钟生效。
+  //
+  // 绑完记得同步改 astro.config.mjs 里的 CANONICAL_SITE，
+  // 否则 sitemap / canonical / OG / RSS 还指着那个打不开的 workers.dev 地址。
+  // ───────────────────────────────────────────────────────────────
+  // "routes": [
+  //   { "pattern": "blog.你的域名.com", "custom_domain": true }
+  // ]
 }
