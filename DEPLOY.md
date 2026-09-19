@@ -86,11 +86,21 @@ Cloudflare Dashboard → **Workers & Pages** → **Create** → **Pages** → **
 
 **4. 在 Pages 里加环境变量**（这一步不能省，因为 `.env` 被 gitignore 了，不会上传）
 
+> 入口在哪 —— 分两种情况，Cloudflare 还改过名字，所以都对不上号时会有点迷惑：
+>
+> | 你在哪 | 入口 |
+> | --- | --- |
+> | 还在创建流程的 **Set up builds and deployments** 页面 | 就在该页 Build output directory 下面，有个可折叠区块叫 **Environment variables (advanced)**，点标题展开 → **Add variable** |
+> | 项目已经建好了 | Workers & Pages → 点进你的项目 → **Settings** → **Variables and Secrets**（旧界面叫 **Environment variables**）→ 下面分 **Production** / **Preview** 两块，各自 **Add** |
+>
+> **注意**：环境变量只在「构建时」生效，而我们的值会被内联进 HTML。所以**改完必须重新部署一次**：
+> 项目 → **Deployments** → 最新那条右侧 **⋯** → **Retry deployment**。不重新构建等于没改。
+
 Settings → **Environment variables** → 选 **Production**（要对 Preview 也生效就再加一遍），逐条添加：
 
 | 变量 | 值 | 必填 | 作用 |
 | --- | --- | --- | --- |
-| `NODE_VERSION` | `22` | **必填** | 不设会用默认旧版 Node，Astro 7 直接装不上。项目里已放 `.nvmrc`（内容 `22`），正常情况下会自动生效，但显式设一遍最稳 |
+| `NODE_VERSION` | `22` | 保险项 | Cloudflare Pages 构建镜像**默认已经是 Node 22.16.0**，本来就满足 Astro 的 ≥22.12.0。项目里也放了 `.nvmrc`（内容 `22`），Cloudflare 会读它。所以这条基本是多余的，设了也无害 |
 | `SITE_URL` | 你的真实域名 | **必填** | sitemap / canonical / OG / RSS 的绝对地址都靠它 |
 | `PUBLIC_GISCUS_REPO` | 如 `RickyHe7/RickyBlog` | 可选 | 评论，四个都填才显示 |
 | `PUBLIC_GISCUS_REPO_ID` | giscus.app 上取 | 可选 | 同上 |
@@ -144,7 +154,8 @@ git push
 ### 这类方式特有的两个坑
 
 1. **环境变量在 Cloudflare 侧，不在你本机。** 所以本地 `npm run build` 用的是本机 `.env`，线上用的是 Pages 里的值 —— 两边可能不一致。调试线上问题时先怀疑这点。
-2. **构建失败要去看 Pages 的构建日志**，不是你本机的终端。最常见的失败原因就是 `NODE_VERSION` 没设成 22。
+2. **构建失败要去看 Pages 的构建日志**，不是你本机的终端。最典型的失败原因是 Node 版本不够
+   （Astro 7 要求 ≥ 22.12.0）—— 不过 Cloudflare 现在的构建镜像默认就是 22.16.0，一般不会碰到。
 
 ---
 

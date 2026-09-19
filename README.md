@@ -190,9 +190,15 @@ npm run preview
 
    | 变量 | 值 | 必填 |
    | --- | --- | --- |
-   | `NODE_VERSION` | `22` | **必填**，否则默认旧版 Node，Astro 7 装不上 |
-   | `SITE_URL` | 你的真实域名 | **必填**，sitemap / canonical / OG / RSS 全靠它 |
+   | `SITE_URL` | 你的真实地址 | **必填**，sitemap / canonical / OG / RSS 全靠它 |
+   | `NODE_VERSION` | `22` | 保险项。Pages 构建镜像默认已是 Node 22.16.0，项目里也有 `.nvmrc`，一般不用设 |
    | `PUBLIC_GISCUS_*`、`PUBLIC_UMAMI_*`、`PUBLIC_BUTTONDOWN_USERNAME` | 见 `.env.example` | 可选，不填则对应区块不渲染 |
+
+   入口：项目 → **Settings** → **Variables and Secrets**（旧界面叫 Environment variables）→ Production → Add。
+   创建项目当页则是一个可折叠的 **Environment variables (advanced)** 区块。
+
+   > **改完环境变量必须重新部署一次**（Deployments → ⋯ → Retry deployment）——
+   > 这些值是构建期被内联进 HTML 的，不重新构建等于没改。
 
    > **别把 `SITE_URL` 填成 `https://rickyblog.pages.dev`** —— 那个域名属于别人的博客（实测确认）。
    > `SITE_URL` 留空时构建会回退到保留域名 `rickyblog.example.com` 并打警告，不会悄悄指错。
