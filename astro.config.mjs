@@ -1,6 +1,5 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
-import { loadEnv } from 'vite';
 
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
@@ -11,40 +10,24 @@ import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers';
 import tailwindcss from '@tailwindcss/vite';
 
 /**
- * 站点地址 —— 全站唯一的绝对 URL 来源。
- * sitemap / canonical / OG / RSS 全部由它推导。
+ * ⭐ 站点地址 —— **全站唯一的域名来源。换域名只改这一行。**
  *
- * ⚠️ 为什么要显式 loadEnv：
- * Astro 不会把 .env 注入到「配置文件求值时」的 process.env 里（它只在渲染组件时提供
- * import.meta.env）。所以只读 process.env.SITE_URL 的话，本地 .env 会被完全忽略 ——
- * 实测过：.env 里写了 SITE_URL，构建出来的 canonical 仍然是占位域名。
+ * 这里刻意**不接受环境变量覆盖**，这是踩坑之后改的：
  *
- * 因此两条路都要走：
- *   1. process.env.SITE_URL —— Cloudflare Pages 的环境变量是真实进程环境变量，走这条
- *   2. loadEnv(...).SITE_URL —— 本地 .env / .env.local，走这条
+ *   原设计是「环境变量 SITE_URL > .env > 这里」。2026-09-19 换域名时踩了 ——
+ *   Cloudflare 里遗留的 `SITE_URL` 还是旧域名，它把代码里改好的新域名**整个盖掉**，
+ *   线上 canonical / sitemap 一直指着那个大陆打不开的 workers.dev 地址；
+ *   而**本地构建完全正常**（本地没有那个变量），于是很难往「远端变量」上想，白查了很久。
  *
- * 这是 Astro 官方文档推荐的用法（import { loadEnv } from 'vite'）。
- */
-const fileEnv = loadEnv(process.env.NODE_ENV === 'production' ? 'production' : 'development', process.cwd(), '');
-
-/**
- * ⭐ 真实站点地址 —— **全站唯一的域名来源，换域名只改这一行。**
+ * 教训：个人博客只有一个正式域名，让「看不见的远端变量」能覆盖「看得见的代码」，
+ * 收益极小（本来也没有多环境需求），风险很大（静默指错域名，而且现象只在线上出现）。
+ * 所以现在 `CANONICAL_SITE` 是**唯一权威**，`SITE_URL` 一律忽略（并会告警提醒去删掉它）。
  *
- * 为什么写死：环境变量这条链有三个环节都可能失效 ——
- *   Cloudflare 上的变量没设、变量值写错、或者 Workers Builds 没把变量暴露给构建进程。
- * 而 sitemap / canonical / OG / RSS 一旦指向错域名，搜索引擎就会收录错的东西。
- * 个人博客只有一个正式域名，写死在这里是收益最大、风险最低的做法。
+ * 真需要临时用别的域名构建，设 `FORCE_SITE_URL` —— 刻意换了个不常见的新名字，
+ * 避免任何历史遗留的 `SITE_URL` 又悄悄生效。
  *
  * 代码里**没有第二处**写死地址：src/lib/seo.ts 的 absoluteUrl / requireSite
  * 拿不到 `Astro.site` 时会直接抛错，不会退回某个兜底域名。
- * （这是踩过坑之后改的 —— 兜底域名会让「写错域名」变成静默故障。）
- *
- * 只有这两种情况需要顺带改别的地方：
- *   - Worker 名字也变了 → `wrangler.jsonc` 的 `name`
- *   - 绑了新域名 → `wrangler.jsonc` 里注释掉的 `routes`（或直接在 Cloudflare 控制台绑）
- *
- * 优先级：环境变量 SITE_URL > `.env` 的 SITE_URL > 这里，方便临时用别的值构建。
- * ⚠️ 反过来说，Cloudflare 里那条 `SITE_URL` 如果值不对，会盖掉这里 —— 不确定就删掉它。
  */
 const CANONICAL_SITE = 'https://blog.infinitest.cloud';
 
@@ -53,7 +36,33 @@ const CANONICAL_SITE = 'https://blog.infinitest.cloud';
  * 但**中国大陆直连打不开**（DNS 污染），所以它只作备用，不写进 canonical / sitemap。
  */
 
-const SITE_URL = (process.env.SITE_URL || fileEnv.SITE_URL || CANONICAL_SITE).trim();
+/** 显式覆盖开关。优先级高于 CANONICAL_SITE，但必须主动设这个名字才会生效。 */
+const FORCE_SITE_URL = (process.env.FORCE_SITE_URL || '').trim();
+
+/** 规范化：去掉末尾斜杠，避免生成 `https://a.com//posts` 这种地址
+ * @param {string} u
+ */
+const normalizeSite = (u) => String(u).trim().replace(/\/+$/, '');
+
+const SITE_URL = normalizeSite(FORCE_SITE_URL || CANONICAL_SITE);
+
+/**
+ * 告警：检测到遗留的 `SITE_URL`。
+ *
+ * 它**已经不再参与计算**，但必须喊出来 —— 否则你会以为它还有效，
+ * 去改它、发现改了没反应，又浪费一轮排查（这正是这次踩坑的经过）。
+ */
+const legacySiteUrl = (process.env.SITE_URL || '').trim();
+if (legacySiteUrl && normalizeSite(legacySiteUrl) !== SITE_URL) {
+  console.warn(
+    '\n[site] ⚠️  检测到环境变量 SITE_URL = ' +
+      legacySiteUrl +
+      '\n[site]    它已不再生效 —— 现在只有 astro.config.mjs 的 CANONICAL_SITE 说了算。' +
+      '\n[site]    本次构建实际使用：' +
+      SITE_URL +
+      '\n[site]    建议去 Cloudflare 把这个变量删掉，免得以后又误以为改它有用。\n'
+  );
+}
 
 /**
  * 兜底检查：抓到「地址不是自己的」这一类问题。
@@ -64,13 +73,16 @@ const SITE_URL = (process.env.SITE_URL || fileEnv.SITE_URL || CANONICAL_SITE).tr
  * 比直接坏掉危险得多，因为你看不出来。
  *
  * 所以这里对两种「明显不对」的值告警：保留域名，以及那个已知被占用的域名。
+ *
+ * 正常情况下 SITE_URL 只可能来自 CANONICAL_SITE（或显式的 FORCE_SITE_URL），
+ * 所以一旦命中，说明 CANONICAL_SITE 本身被改坏了。
  */
 if (/example\.com|rickyblog\.pages\.dev/.test(SITE_URL)) {
   console.warn(
     '\n[site] ⚠️  当前站点地址是 ' +
       SITE_URL +
-      '\n[site]    这不是你的真实站点地址，sitemap / canonical / OG / RSS 会指向它。\n' +
-      '[site]    请检查 Cloudflare 的环境变量、本地 .env，以及 astro.config.mjs 里的 CANONICAL_SITE。\n'
+      '\n[site]    这不是你的真实站点地址，sitemap / canonical / OG / RSS 会指向它。' +
+      '\n[site]    请检查 astro.config.mjs 里的 CANONICAL_SITE（它是唯一来源）。\n'
   );
 }
 

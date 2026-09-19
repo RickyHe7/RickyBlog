@@ -168,7 +168,7 @@ npm run preview
 | 评论（Giscus） | `PUBLIC_GISCUS_REPO` `PUBLIC_GISCUS_REPO_ID` `PUBLIC_GISCUS_CATEGORY` `PUBLIC_GISCUS_CATEGORY_ID` | https://giscus.app/zh-CN （需要一个**公开**仓库并开启 Discussions） |
 | 统计（Umami） | `PUBLIC_UMAMI_SRC` `PUBLIC_UMAMI_WEBSITE_ID` | Cloud：`https://cloud.umami.is/script.js`；也可自建 |
 | 订阅（Buttondown） | `PUBLIC_BUTTONDOWN_USERNAME` | buttondown.com 的用户名 |
-| 站点地址 | `SITE_URL` | 换域名时用，不填则用 `astro.config.mjs` 里的默认值 |
+| 站点地址 | — | **不需要配**：唯一来源是 `astro.config.mjs` 的 `CANONICAL_SITE`（环境变量已被禁用，见下） |
 
 完整示例见 `.env.example`。
 
@@ -207,12 +207,11 @@ npm run preview
 
 3. Cloudflare Dashboard → Workers & Pages → Create → **Workers** → Import a repository → 选中仓库
 4. 构建配置：Build command `npm run build`，Deploy command `npx wrangler deploy`
-5. **环境变量**（`.env` 被 gitignore 了，不会上传）。注意 `SITE_URL` 已经写死在
-   `astro.config.mjs` 的 `CANONICAL_SITE` 里，所以**只有它是可选的**：
+5. **环境变量**（`.env` 被 gitignore 了，不会上传）
 
    | 变量 | 值 | 必填 |
    | --- | --- | --- |
-   | `SITE_URL` | `https://blog.infinitest.cloud` | 可选。不设也行；**设错反而会坏事**，不确定就删掉 |
+   | `SITE_URL` | — | ❌ **不要设**。站点地址只认 `astro.config.mjs` 的 `CANONICAL_SITE`（唯一来源），环境变量已不再参与计算；设了还会在构建日志里告警提醒你删掉 |
    | `NODE_VERSION` | `22` | 可选。Workers 构建镜像默认已是 Node 22.16.0，项目里也有 `.nvmrc` |
    | `PUBLIC_GISCUS_*`、`PUBLIC_UMAMI_*`、`PUBLIC_BUTTONDOWN_USERNAME` | 见 `.env.example` | 可选，不填则对应区块不渲染 |
 
@@ -221,17 +220,20 @@ npm run preview
    > **改完环境变量必须重新部署一次**（Deployments → ⋯ → Retry deployment）——
    > 这些值是构建期被内联进 HTML 的，不重新构建等于没改。
 
-   > **别把 `SITE_URL` 填成 `https://rickyblog.pages.dev`** —— 那个域名属于别人的博客（实测确认）。
-   > 留空时会用 `astro.config.mjs` 的 `CANONICAL_SITE`，不会悄悄指错。
+   > ⚠️ **换域名时如果代码改了、推了，但线上还是旧域名，先怀疑这条 `SITE_URL`。**
+   > 2026-09-19 换到 `infinitest.cloud` 时就吃过这个亏：Cloudflare 里遗留的 `SITE_URL`
+   > 是旧域名，把代码改好的新域名整个盖掉，而本地构建完全正常（本地没那个变量），很难往它想。
+   > 现在代码已禁止它生效，但**残留的变量建议直接删掉**，免得误判。
 
-   > 本地构建读 `.env`（靠 `astro.config.mjs` 里的 `loadEnv()`），
-   > 线上构建读 Pages 的环境变量 —— `SITE_URL` 两条路都支持，细节见 DEPLOY.md。
+   > `SITE_URL` 已经完全不再被读取（唯一的站点地址来源是 `astro.config.mjs` 的
+   > `CANONICAL_SITE`）。需要临时用别的域名构建时，用 `FORCE_SITE_URL`。
 
 6. 保存并部署。以后 `git push` 即自动重新构建
 
 > 项目里已放 `.nvmrc`（内容 `22`），正常情况 Node 版本会自动对齐；`NODE_VERSION` 是显式保险。
 
-**上线后别忘了**：把真实域名填回 `SITE_URL`。sitemap / canonical / OG / RSS 全靠它推导绝对地址，用占位域名会让搜索引擎收录错的东西。
+**上线后别忘了**：确认 `astro.config.mjs` 的 `CANONICAL_SITE` 是你的真实域名 ——
+sitemap / canonical / OG / RSS 全靠它推导绝对地址。**换域名时改这一行就够了。**
 
 不想维护仓库的话，也可以改用 Direct Upload（`npm run deploy`，不需要 Git）—— 两种方式的对照表在 DEPLOY.md。
 

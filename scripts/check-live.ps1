@@ -149,9 +149,9 @@ if ($failures.Count -eq 0) {
     Write-Output ""
     Write-Output "常见原因："
     Write-Output "  1. 换了域名但还没重新构建/推送 —— 元数据是构建时写进 HTML 的（本站最常见的原因）"
-    Write-Output "  2. Cloudflare 里的 SITE_URL 值不对 → 优先级比 astro.config.mjs 的 CANONICAL_SITE 高，会盖掉它"
-    Write-Output "  3. 构建根本没成功 → 去 Cloudflare 的 Deployments 里看那次构建日志"
+    Write-Output "  2. 那次构建失败了，线上还是上一次的产物 → 去 Cloudflare 的 Deployments 看最新一条的状态与日志"
+    Write-Output "  3. astro.config.mjs 的 CANONICAL_SITE 和你要核对的地址不是同一个"
     Write-Output ""
-    Write-Output "排查入口：astro.config.mjs 的 CANONICAL_SITE 是代码里唯一写死域名的地方"
+    Write-Output "（注：环境变量 SITE_URL 已不再生效，不用再去查它 —— 站点地址只认 CANONICAL_SITE）"
 }
 Write-Output ""

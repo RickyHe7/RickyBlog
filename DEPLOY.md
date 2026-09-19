@@ -133,7 +133,7 @@ Settings → **Environment variables** → 选 **Production**（要对 Preview �
 | 变量 | 值 | 必填 | 作用 |
 | --- | --- | --- | --- |
 | `NODE_VERSION` | `22` | 保险项 | Cloudflare Pages 构建镜像**默认已经是 Node 22.16.0**，本来就满足 Astro 的 ≥22.12.0。项目里也放了 `.nvmrc`（内容 `22`），Cloudflare 会读它。所以这条基本是多余的，设了也无害 |
-| `SITE_URL` | `https://blog.infinitest.cloud` | 可选 | sitemap / canonical / OG / RSS 的绝对地址。**现在已写死在 `astro.config.mjs` 的 `CANONICAL_SITE` 里**，所以不设也对。设了会覆盖它（优先级：环境变量 > `.env` > `CANONICAL_SITE`）。**注意**：如果这里的值和你的真实地址不一致，反而会把站点搞坏 —— 不确定就删掉这一条 |
+| `SITE_URL` | — | ❌ **不要设** | **已经失效**：站点地址现在只认 `astro.config.mjs` 的 `CANONICAL_SITE`（唯一来源）。设了不仅没用，还会在构建日志里打一条告警提醒你删掉它。**历史遗留的这条变量曾经把换好的新域名整个盖掉、导致线上 SEO 一直指旧域名** —— 如果你之前在 Cloudflare 设过它，**建议直接删掉** |
 | `PUBLIC_GISCUS_REPO` | 如 `RickyHe7/RickyBlog` | 可选 | 评论，四个都填才显示 |
 | `PUBLIC_GISCUS_REPO_ID` | giscus.app 上取 | 可选 | 同上 |
 | `PUBLIC_GISCUS_CATEGORY` | 如 `Announcements` | 可选 | 同上 |
@@ -151,23 +151,19 @@ Settings → **Environment variables** → 选 **Production**（要对 Preview �
 > 两个后果：
 > 1. Cloudflare 里创建项目时如果名字已被占用，它会给你加后缀（形如 `rickyblog-a1b.pages.dev`）或直接拒绝。
 >    建好后**务必用 Dashboard 里显示的完整地址**，别照着 `rickyblog.pages.dev` 填。
-> 2. 别把 `SITE_URL` 填成 `https://rickyblog.pages.dev` —— 那会把你的 canonical / sitemap 指向陌生人的站点。
->
-> 早期版本 `astro.config.mjs` 就是拿这个域名当占位值，已经改掉了：现在回退用 IANA 保留域名
-> `https://rickyblog.example.com`，它永远解析不到真实站点，并会在构建时打一段醒目警告 ——
-> 出问题时表现为「明显不对」而不是「悄悄指错」。
+> 2. 任何人都不要把站点地址配成 `https://rickyblog.pages.dev` —— 那会把 canonical / sitemap
+>    指向陌生人的站点。
 
-> ### ⚠️ `SITE_URL` 的两种来源（本地 vs 线上不一样）
+> ### ⚠️ 站点地址只认 `astro.config.mjs` 的 `CANONICAL_SITE`
 >
-> | 环境 | 从哪里读 | 说明 |
-> | --- | --- | --- |
-> | Cloudflare 构建 | `process.env.SITE_URL` | Pages 里的环境变量是真实进程环境变量 |
-> | 本机构建 | `.env` 文件 | 靠 `astro.config.mjs` 里的 `loadEnv()` 读 |
+> 它现在**是唯一权威**，环境变量不参与计算。历史上不是这样（曾经是「环境变量 > `.env` > 配置」
+> 的覆盖链），结果 2026-09-19 换域名时踩了坑：Cloudflare 里遗留的 `SITE_URL` 是旧域名，
+> 把代码里改好的新域名整个盖掉 —— 线上 SEO 一直指错，而本地构建完全正常，很难往远端变量上想。
 >
-> 为什么特意提这个：**Astro 不会把 `.env` 注入到配置文件求值时的 `process.env`**，
-> 它只在渲染组件时提供 `import.meta.env`。所以如果 `astro.config.mjs` 里只写
-> `process.env.SITE_URL`，本地 `.env` 会被完全忽略 —— 实测过，`.env` 里写了值，
-> 构建出来的 canonical 仍然是占位域名。现在两条路都接了，本地和线上都能正确生效。
+> 现在如果检测到残留的 `SITE_URL` 且与配置不一致，构建会打一段醒目告警提醒你删掉它。
+> 需要临时用别的域名构建时，用 `FORCE_SITE_URL`（刻意换了不常见的新名字）。
+>
+> 完整排查经过见〈以后换域名怎么办 → 历史教训〉。
 
 **5. 保存并部署**
 
@@ -217,17 +213,21 @@ npm run deploy                                       # 以后每次发布
 
 ## 首次上线后必做
 
-1. **站点地址 —— ✅ 已配好，但要确认一件事**
+1. **站点地址 —— ✅ 已配好**
 
    正式地址写死在 `astro.config.mjs` 的 `CANONICAL_SITE`：**`https://blog.infinitest.cloud`**。
-   构建实测验证过：地址正确传播到全部产物（每个页面的 canonical + og:url、`robots.txt`、
-   `rss.xml`、`sitemap`）。
+   它是**唯一权威** —— 环境变量不再参与计算。构建实测验证过：地址正确传播到全部产物
+   （每个页面的 canonical + og:url、`robots.txt`、`rss.xml`、`sitemap`）。
 
-   优先级是 **`环境变量 SITE_URL` > `.env` > `CANONICAL_SITE`**。
-
-   > ⚠️ **所以在 Cloudflare 里加过 `SITE_URL` 的话，去确认它的值。**
-   > 它的优先级高于配置里的正确值 —— 如果里面填的不是 `https://blog.infinitest.cloud`，
-   > **会盖掉正确的那个**。不确定就**直接删掉那条**，让配置生效。
+   > ⚠️ **如果你之前在 Cloudflare 设过 `SITE_URL`，去把它删掉。**
+   >
+   > 它现在**已经不生效了**（代码改成只认 `CANONICAL_SITE`），但留着会造成误判 ——
+   > **2026-09-19 换域名时就吃过这个亏**：那条遗留变量是旧域名，把代码里改好的新域名整个盖掉，
+   > 线上 canonical / sitemap 一直指着大陆打不开的 `workers.dev`；
+   > 而本地构建完全正常（本地没有那个变量），于是很难往远端变量上想，白查了很久。
+   >
+   > 删除路径：Worker → **Settings** → **Variables and Secrets**。
+   > 如果构建日志里出现 `[site] ⚠️ 检测到环境变量 SITE_URL = ...` 就是在提醒你这事。
 
    **换域名时只改 `CANONICAL_SITE` 这一处**（完整清单见〈以后换域名怎么办〉）。
 
@@ -326,7 +326,7 @@ npm run deploy                                       # 以后每次发布
 #### 通用流程（留档：绑一个新域名照这个走）
 
 > 这是**首次绑定**的从零流程。如果是「已经有域名在跑，想换成另一个」，
-> 见后面的〈以后换域名怎么办〉——那边多了旧域名 301、SITE_URL 覆盖等注意事项。
+> 见后面的〈以后换域名怎么办〉——那边多了旧域名 301、`SITE_URL` 残留清理等注意事项。
 
 **1. 买域名**
 
@@ -431,7 +431,7 @@ Cloudflare 免费版在中国大陆**没有专门优化**：默认可能把你�
 
 域名已经收敛到 `astro.config.mjs` 的 `CANONICAL_SITE`，全站 canonical / sitemap / OG /
 RSS / robots 都从它推导。实测确认：**`src/` 目录里零处出现当前域名**（`grep` 过），
-`.env` 里的 `SITE_URL` 也是留空的（回落到配置）。
+`.env` 里的 `SITE_URL` 也留空（而且它现在根本不会被读取）。
 
 > 为什么刻意不留兜底域名：早期 `src/lib/seo.ts` 有一个兜底 origin，后果是「域名写错时不报错、
 > 静默把 canonical 指向错域名」——踩过两次。现在拿不到 `Astro.site` 会**直接报错**。
@@ -459,12 +459,14 @@ RSS / robots 都从它推导。实测确认：**`src/` 目录里零处出现当�
 const CANONICAL_SITE = 'https://新域名';
 ```
 
-**3. 检查 Cloudflare 里的 `SITE_URL`**
+**3. 顺手删掉 Cloudflare 里的 `SITE_URL`（如果有）**
 
-之前加过这个环境变量的话，**改成新域名，或者直接删掉那条**。
+**这一步现在已经不是必须的了** —— 代码改成只认 `CANONICAL_SITE`，环境变量不再参与计算。
+但**留着有害**：它会让你误以为改它能生效，从而在排查时走错方向。所以还是删掉。
+删完构建日志里那条 `[site] ⚠️ 检测到环境变量 SITE_URL = ...` 也会消失。
 
-> ⚠️ 这是换域名**唯一会让"代码改了却不生效"的原因** —— 它的优先级高于 `CANONICAL_SITE`，
-> 留着旧值会把改好的配置整个盖掉。
+> 📌 这一步是**用一次真实的翻车换来的**（见下面〈历史教训〉）——
+> 换域名时它把新域名整个盖掉，导致线上 SEO 一直指旧域名，而本地构建却完全正常。
 
 **4. 推送**
 
@@ -483,6 +485,19 @@ Cloudflare 自动重新构建，canonical / sitemap / RSS / OG 全部跟着切�
 ```
 
 重点看 `首页 canonical 用真实域名` 和 `robots.txt 的 Sitemap 指向本站` 这两项。
+
+#### 历史教训：「代码改了却不生效」的排查顺序
+
+2026-09-19 换到 `infinitest.cloud` 时踩的坑，记下来避免重演：
+
+1. 代码改了 `CANONICAL_SITE`、也 `git push` 了（远程 SHA 已核对）→ **线上 canonical 还是旧域名**
+2. 连续多次抓取确认不是 CDN 缓存延迟
+3. 本地用同一份代码构建 → **产物里是新域名**（29 个文件，旧域名 0 残留）
+4. ⇒ 差异只可能来自**构建环境**，而唯一能影响它的就是环境变量
+5. 根因：Cloudflare 里遗留的 `SITE_URL` = 旧域名，优先级高于代码
+
+**结论：以后遇到"本地对、线上不对且只和域名有关"，第一个怀疑对象就是远端环境变量。**
+现在代码层面已经禁止它生效，并会在构建日志里告警。
 
 ### ⚠️ 旧域名要处理，否则是重复内容
 
