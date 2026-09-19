@@ -26,26 +26,43 @@ import tailwindcss from '@tailwindcss/vite';
  * 这是 Astro 官方文档推荐的用法（import { loadEnv } from 'vite'）。
  */
 const fileEnv = loadEnv(process.env.NODE_ENV === 'production' ? 'production' : 'development', process.cwd(), '');
-const SITE_URL = (process.env.SITE_URL || fileEnv.SITE_URL || '').trim();
 
 /**
- * ⚠️ 占位域名，别改成任何真实的 *.pages.dev 地址。
+ * 真实站点地址，写死作为最终兜底。
  *
- * 这里踩过一次：原本用 `https://rickyblog.pages.dev` 当占位，后来发现 **那个域名属于别人的博客**
- * （robots.txt 里写着 rickyacc.me）。风险在于一旦忘了设 SITE_URL，
- * sitemap / canonical / OG / RSS 就会静悄悄指向一个陌生人的站点 —— 比直接坏掉危险得多。
+ * 为什么写死：环境变量这条链有三个环节都可能失效 ——
+ *   Cloudflare 上的变量没设、变量值写错、或者 Workers Builds 没有把变量暴露给构建进程。
+ * 而 sitemap / canonical / OG / RSS 一旦指向错域名，搜索引擎就会收录错的东西。
+ * 个人博客只有一个正式域名，写死在这里是收益最大、风险最低的做法。
  *
- * 所以改用 IANA 保留域名：它永远解析不到真实站点，出问题时表现为「明显不对」而不是「悄悄指错」。
+ * 换域名时改这一行（同时改 wrangler.jsonc 里的 name，如果 Worker 名也变了）。
+ * 优先级仍是：环境变量 > .env > 这里，方便临时用别的值构建。
  */
-const PLACEHOLDER_SITE = 'https://rickyblog.example.com';
+const CANONICAL_SITE = 'https://rickysblog.1174716217.workers.dev';
 
-if (!SITE_URL) {
+const SITE_URL = (process.env.SITE_URL || fileEnv.SITE_URL || CANONICAL_SITE).trim();
+
+/**
+ * 兜底检查：抓到「地址不是自己的」这一类问题。
+ *
+ * 这条检查是踩坑之后加的：早期版本拿 `https://rickyblog.pages.dev` 当默认值，
+ * 后来发现**那个域名属于别人的博客**（robots.txt 指向 rickyacc.me）。
+ * 一旦构建时用的是那个值，sitemap / canonical / OG / RSS 就会静悄悄指向一个陌生人的站点 ——
+ * 比直接坏掉危险得多，因为你看不出来。
+ *
+ * 所以这里对两种「明显不对」的值告警：保留域名，以及那个已知被占用的域名。
+ */
+if (/example\.com|rickyblog\.pages\.dev/.test(SITE_URL)) {
   console.warn(
-    '\n[site] ⚠️  未设置 SITE_URL，已回退到占位域名 ' +
-      PLACEHOLDER_SITE +
-      '\n[site]    这会导致 sitemap / canonical / OG / RSS 指向错误地址。\n' +
-      '[site]    本地：写进 .env ；线上：Cloudflare Pages → Settings → Environment variables。\n'
+    '\n[site] ⚠️  当前站点地址是 ' +
+      SITE_URL +
+      '\n[site]    这不是你的真实站点地址，sitemap / canonical / OG / RSS 会指向它。\n' +
+      '[site]    请检查 Cloudflare 的环境变量、本地 .env，以及 astro.config.mjs 里的 CANONICAL_SITE。\n'
   );
+}
+
+if (process.env.DEBUG_SITE_URL) {
+  console.log('[site] 最终使用的站点地址: ' + SITE_URL);
 }
 
 /**
@@ -78,7 +95,7 @@ const externalLinks = {
 
 // https://astro.build/config
 export default defineConfig({
-  site: SITE_URL || PLACEHOLDER_SITE,
+  site: SITE_URL,
   trailingSlash: 'ignore',
 
   // 悬停时预取目标页面，几乎零成本地让站内跳转「秒开」

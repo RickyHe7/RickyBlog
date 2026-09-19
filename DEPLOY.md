@@ -33,29 +33,23 @@ Cloudflare Pages 有两种接入方式，它们对仓库的要求正好相反：
 
 ---
 
-## 当前选择：路线 B（Git 集成）
+## 当前选择：Cloudflare **Workers** + Git 集成
 
-> 这一节就是本项目**正在走的路线**。路线 A 保留在下面作为备选。
+> 实际部署走的是这条路，地址形如 **`https://rickysblog.1174716217.workers.dev`**。
 >
-> 代价要提前说清楚：路线 B **必须有一个 GitHub 仓库**，也就是说之前「不建仓库」那条决定作废了。
-> 好处是以后写完文章 `git push` 就自动上线，不用在本机跑构建。
+> 注意 `workers.dev` 而不是 `pages.dev` —— 这是 **Workers**，不是 Pages。两个产品不一样：
+> **Workers 托管静态站点时必须有一份 `wrangler.jsonc`** 告诉它构建产物在哪个目录，
+> 否则 `npx wrangler deploy` 会因为找不到入口而失败，或者部署出一个什么都返回不了的空壳。
+> 这个文件已经在仓库里了（`wrangler.jsonc`，`assets.directory = "./dist"`）。
+
+> 代价要提前说清楚：这条路**必须有一个 GitHub 仓库**，也就是说最初「不建仓库」那条决定作废了。
+> 好处是以后写完文章 `git push` 就自动上线。
 
 ### 一次性准备
 
 **1. 在 GitHub 建仓库 —— ✅ 已完成**
 
-仓库已建好：**https://github.com/RickyHe7/RickyBlog**（本地 remote 已指向它）。
-当时建仓库的取舍记录在这里，以后要重建时参考：
-
-| 字段 | 取值 | 说明 |
-| --- | --- | --- |
-| Repository name | `RickyBlog` | 与本地目录同名 |
-| **Visibility** | **Public** | 日后要开 Giscus 评论必须是公开仓库 |
-| Initialize with README | **不勾** | 本地已有 README，勾了会冲突 |
-| Add .gitignore / license | **都不选** | 同上 |
-
-如果要改成 Private：Cloudflare 那边需要额外授权 GitHub App 访问私有仓库，功能上没问题，
-但评论以后得再单独找一个公开仓库来承载 Discussions。
+仓库：**https://github.com/RickyHe7/RickyBlog**（Public）。本地 `origin` 已指向它。
 
 **2. 把本地代码推上去**
 
@@ -73,18 +67,34 @@ git push -u origin main
 > 在无人值守或非交互环境里执行会失败：git 会去调 `git credential-manager get` 取令牌，
 > 而 GCM 需要能弹窗/唤起浏览器，取不到就直接退出（表现为 `exit 128` 且没有任何报错信息）。
 
-**3. 在 Cloudflare 里接上**
+**3. 在 Cloudflare 里接上 —— ✅ 已完成**
 
-Cloudflare Dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git** → 授权并选中 `RickyBlog` 仓库，然后按下表填构建配置：
+实际走的是 **Workers** 而不是 Pages：Cloudflare Dashboard → **Workers & Pages** → **Create** →
+**Workers** → **Import a repository** → 授权并选中 `RickyBlog`。构建配置：
 
 | 配置项 | 值 |
 | --- | --- |
 | Production branch | `main` |
-| Framework preset | `Astro` |
 | Build command | `npm run build` |
-| Build output directory | `dist` |
+| Deploy command | `npx wrangler deploy`（默认值，读仓库里的 `wrangler.jsonc`） |
 
-**4. 在 Pages 里加环境变量**（这一步不能省，因为 `.env` 被 gitignore 了，不会上传）
+**关键差异：Workers 靠 `wrangler.jsonc` 找构建产物**，而 Pages 是在控制台里填一个「输出目录」。
+仓库里的 `wrangler.jsonc` 已经写好了：
+
+```jsonc
+{
+  "name": "rickysblog",                 // 决定地址前缀：rickysblog.<账号子域>.workers.dev
+  "compatibility_date": "2026-09-19",
+  "assets": {
+    "directory": "./dist",              // astro build 的输出目录
+    "not_found_handling": "404-page"    // 未知路径返回 dist/404.html
+  }
+}
+```
+
+少了这份配置，`wrangler deploy` 会因为找不到入口而失败或部署出空壳 —— 这是 Workers 上最容易漏的一步。
+
+**4. 加环境变量**（`.env` 被 gitignore 了，不会上传到 Cloudflare）
 
 > 入口在哪 —— 分两种情况，Cloudflare 还改过名字，所以都对不上号时会有点迷惑：
 >
@@ -101,7 +111,7 @@ Settings → **Environment variables** → 选 **Production**（要对 Preview �
 | 变量 | 值 | 必填 | 作用 |
 | --- | --- | --- | --- |
 | `NODE_VERSION` | `22` | 保险项 | Cloudflare Pages 构建镜像**默认已经是 Node 22.16.0**，本来就满足 Astro 的 ≥22.12.0。项目里也放了 `.nvmrc`（内容 `22`），Cloudflare 会读它。所以这条基本是多余的，设了也无害 |
-| `SITE_URL` | 你的真实域名 | **必填** | sitemap / canonical / OG / RSS 的绝对地址都靠它 |
+| `SITE_URL` | `https://rickysblog.1174716217.workers.dev` | 可选 | sitemap / canonical / OG / RSS 的绝对地址。**现在已写死在 `astro.config.mjs` 的 `CANONICAL_SITE` 里**，所以不设也对。设了会覆盖它（优先级：环境变量 > `.env` > `CANONICAL_SITE`）。**注意**：如果这里的值和你的真实地址不一致，反而会把站点搞坏 —— 不确定就删掉这一条 |
 | `PUBLIC_GISCUS_REPO` | 如 `RickyHe7/RickyBlog` | 可选 | 评论，四个都填才显示 |
 | `PUBLIC_GISCUS_REPO_ID` | giscus.app 上取 | 可选 | 同上 |
 | `PUBLIC_GISCUS_CATEGORY` | 如 `Announcements` | 可选 | 同上 |

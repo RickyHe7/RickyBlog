@@ -1,0 +1,24 @@
+{
+  // Cloudflare Workers 部署配置（纯静态资源模式）
+  //
+  // 为什么需要这个文件：
+  //   本项目走的是 Cloudflare Workers（地址形如 *.workers.dev），不是 Pages。
+  //   Workers 托管静态站点时，必须有一份 wrangler 配置告诉它「构建产物在哪个目录」，
+  //   否则 `npx wrangler deploy` 会因为找不到入口而失败，或者部署出一个什么都返回不了的空壳。
+  //
+  // name 必须与 Cloudflare 上的 Worker 名一致，它会出现在地址里：
+  //   https://rickysblog.1174716217.workers.dev
+  //   这里的 rickysblog 就是 name，1174716217 是你账号的子域。
+  //
+  // 换地址要同时改两处：这里的 name，以及 astro.config.mjs 里的 SITE_URL。
+  "name": "rickysblog",
+  "compatibility_date": "2026-09-19",
+  "assets": {
+    // astro build 的输出目录
+    "directory": "./dist",
+    // 访问不存在的路径时返回 dist/404.html（并带 404 状态码），
+    // 这样我们那个「这片叶子被风吹走了」的页面才会生效。
+    // 别改成 single-page-application —— 那是给 SPA 用的，会把所有路径都返回首页。
+    "not_found_handling": "404-page"
+  }
+}

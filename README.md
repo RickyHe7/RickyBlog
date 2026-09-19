@@ -44,6 +44,7 @@ npm run check     # 类型与模板检查（astro check）
 ```
 RickyBlog/
 ├─ astro.config.mjs          站点地址、集成、Markdown 处理器、外链插件
+├─ wrangler.jsonc            Cloudflare Workers 部署配置（静态资源目录 = ./dist）
 ├─ pagefind.yml              Pagefind 索引配置（排除导航/页脚）
 ├─ .env.example              环境变量示例
 ├─ DEPLOY.md                 部署指南（Git 集成 / Direct Upload 对照、域名绑定、回滚）
@@ -173,8 +174,13 @@ npm run preview
 
 ## 部署
 
-走 **Cloudflare Pages · Git 集成**：推到 GitHub，Cloudflare 自动构建发布。
+走 **Cloudflare Workers · Git 集成**：推到 GitHub，Cloudflare 自动构建发布。
+线上地址：**https://rickysblog.1174716217.workers.dev**
 **详细步骤在 [DEPLOY.md](./DEPLOY.md)**，这里只给要点。
+
+> 是 **Workers** 不是 Pages（地址是 `workers.dev` 而非 `pages.dev`）。区别在于
+> **Workers 托管静态站点必须有 `wrangler.jsonc`** 指明构建产物目录 —— 仓库里已经放好了
+> （`assets.directory = "./dist"`，未知路径返回 `404.html`）。少了它 `wrangler deploy` 会失败。
 
 1. 在 GitHub 建一个仓库（**空仓库**，不要勾 README / gitignore / license）
 2. 本地推送：
@@ -184,18 +190,18 @@ npm run preview
    git push -u origin main
    ```
 
-3. Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git → 选中仓库
-4. 构建设置：Build command `npm run build`，Output directory `dist`，Framework preset `Astro`
-5. **环境变量必须加**（`.env` 被 gitignore 了，不会上传到 Cloudflare）：
+3. Cloudflare Dashboard → Workers & Pages → Create → **Workers** → Import a repository → 选中仓库
+4. 构建配置：Build command `npm run build`，Deploy command `npx wrangler deploy`
+5. **环境变量**（`.env` 被 gitignore 了，不会上传）。注意 `SITE_URL` 已经写死在
+   `astro.config.mjs` 的 `CANONICAL_SITE` 里，所以**只有它是可选的**：
 
    | 变量 | 值 | 必填 |
    | --- | --- | --- |
-   | `SITE_URL` | 你的真实地址 | **必填**，sitemap / canonical / OG / RSS 全靠它 |
-   | `NODE_VERSION` | `22` | 保险项。Pages 构建镜像默认已是 Node 22.16.0，项目里也有 `.nvmrc`，一般不用设 |
+   | `SITE_URL` | `https://rickysblog.1174716217.workers.dev` | 可选。不设也行；**设错反而会坏事**，不确定就删掉 |
+   | `NODE_VERSION` | `22` | 可选。Workers 构建镜像默认已是 Node 22.16.0，项目里也有 `.nvmrc` |
    | `PUBLIC_GISCUS_*`、`PUBLIC_UMAMI_*`、`PUBLIC_BUTTONDOWN_USERNAME` | 见 `.env.example` | 可选，不填则对应区块不渲染 |
 
-   入口：项目 → **Settings** → **Variables and Secrets**（旧界面叫 Environment variables）→ Production → Add。
-   创建项目当页则是一个可折叠的 **Environment variables (advanced)** 区块。
+   入口：项目 → **Settings** → **Variables and Secrets**（旧界面叫 Environment variables）→ Add。
 
    > **改完环境变量必须重新部署一次**（Deployments → ⋯ → Retry deployment）——
    > 这些值是构建期被内联进 HTML 的，不重新构建等于没改。

@@ -13,7 +13,7 @@
     "preview:lan": "astro preview --host",
     "check": "astro check",
     "astro": "astro",
-    "deploy": "npm run build && npx --yes wrangler pages deploy dist --project-name=ricky-blog"
+    "deploy": "npm run build && npx --yes wrangler deploy"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "^0.4.1",
