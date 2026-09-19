@@ -2,39 +2,84 @@
 import MapleLeaf from './MapleLeaf.astro';
 
 /**
- * 背景落叶氛围层。
+ * 背景秋叶氛围层。
+ *
+ * 三层景深（远 / 中 / 近）各给不同的尺寸、浓淡、时长与模糊，让落叶有纵深，
+ * 而不是一层平贴的贴纸。每片叶子的运动又拆成两层（见 global.css）：
+ *   .leaf-fall  竖直下落（重力，linear）
+ *   .leaf-sway  横向摆动 + 翻转（风，ease-in-out 往返）
+ * 拆开之后「被风吹」来自两套不同节奏的运动，比「一条斜线 + 匀速旋转」真实得多。
  *
  * 设计约束（都是刻意的）：
  *   - 纯 CSS 动画，零 JS、零图片请求，不参与首屏渲染计算；
- *   - 只有 7 片叶子（窄屏 3 片），opacity 0.18–0.3，绝不影响正文可读性；
+ *   - 12 片叶子（窄屏 5 片），opacity 0.14–0.32，绝不影响正文可读性；
  *   - position: fixed + pointer-events: none，不遮挡点击、不产生滚动条；
- *   - 系统开启「减少动效」时整层隐藏（见 global.css）。
+ *   - prefers-reduced-motion 下整层隐藏（见 global.css）。
  *
- * 每片叶子的颜色与大小在这里配，运动参数（时长、延迟、漂移、旋转）
- * 由 global.css 里的 .leaf:nth-child(n) 规则给出。
+ * 每片叶子的参数都在下面的表里，改这里就够，不用动 CSS。
  */
-const COLORS = [
-  'var(--color-maple-400)',
-  'var(--color-ginkgo-400)',
-  'var(--color-crimson-400)',
-  'var(--color-maple-600)',
-  'var(--color-ginkgo-300)',
-  'var(--color-maple-500)',
-  'var(--color-crimson-500)',
+interface Leaf {
+  /** 水平位置 */
+  x: string;
+  /** 边长（px） */
+  size: number;
+  /** 景深：决定是否加模糊 */
+  depth: 'far' | 'mid' | 'near';
+  /** 颜色令牌，写完整的 var() 名字 */
+  color: string;
+  /** 下落一轮的秒数 */
+  duration: number;
+  /** 起始延迟，错开避免同时出发 */
+  delay: number;
+  /** 横摆幅度（vw，正负决定方向） */
+  drift: number;
+  /** 翻转角度 */
+  spin: number;
+  /** 单次横摆的秒数 */
+  sway: number;
+  opacity: number;
+}
+
+const LEAVES: Leaf[] = [
+  // ---------------------------------------------------------------- 远景：小、淡、微糊、慢，负责纵深
+  { x: '8%', size: 14, depth: 'far', color: '--color-ginkgo-300', duration: 46, delay: 0, drift: 5, spin: 260, sway: 8, opacity: 0.16 },
+  { x: '31%', size: 12, depth: 'far', color: '--color-maple-400', duration: 52, delay: 11, drift: -4, spin: -220, sway: 9, opacity: 0.14 },
+  { x: '62%', size: 15, depth: 'far', color: '--color-crimson-400', duration: 44, delay: 5, drift: 6, spin: 300, sway: 7.5, opacity: 0.15 },
+  { x: '89%', size: 13, depth: 'far', color: '--color-ginkgo-400', duration: 49, delay: 17, drift: -5, spin: -260, sway: 8.5, opacity: 0.14 },
+
+  // ------------------------------------------------------------------ 中景：主体层
+  { x: '16%', size: 19, depth: 'mid', color: '--color-maple-500', duration: 30, delay: 3, drift: 7, spin: 360, sway: 6, opacity: 0.24 },
+  { x: '42%', size: 21, depth: 'mid', color: '--color-ginkgo-400', duration: 33, delay: 13, drift: -6, spin: -320, sway: 6.5, opacity: 0.22 },
+  { x: '55%', size: 17, depth: 'mid', color: '--color-ginkgo-300', duration: 26, delay: 20, drift: 6, spin: 340, sway: 6, opacity: 0.22 },
+  { x: '70%', size: 18, depth: 'mid', color: '--color-crimson-500', duration: 28, delay: 7, drift: 8, spin: 300, sway: 5.5, opacity: 0.25 },
+  { x: '94%', size: 20, depth: 'mid', color: '--color-maple-600', duration: 34, delay: 1, drift: -7, spin: -400, sway: 7, opacity: 0.2 },
+
+  // ------------------------------------------------------- 近景：大、浓、清晰、快，负责「扑面」的感觉
+  { x: '26%', size: 27, depth: 'near', color: '--color-maple-500', duration: 21, delay: 9, drift: -9, spin: 420, sway: 4.5, opacity: 0.3 },
+  { x: '58%', size: 30, depth: 'near', color: '--color-crimson-400', duration: 18, delay: 2, drift: 10, spin: -480, sway: 4, opacity: 0.28 },
+  { x: '81%', size: 24, depth: 'near', color: '--color-maple-400', duration: 23, delay: 15, drift: -8, spin: 380, sway: 5, opacity: 0.32 },
 ];
-
-const SIZES = [22, 16, 26, 18, 24, 15, 20];
-
-const leaves = SIZES.map((size, index) => ({
-  size,
-  color: COLORS[index % COLORS.length],
-}));
 ---
 
 <div class="leaf-scene" aria-hidden="true" data-pagefind-ignore>
   {
-    leaves.map((leaf) => (
-      <MapleLeaf class="leaf" size={leaf.size} style={`color: ${leaf.color}`} />
+    LEAVES.map((leaf) => (
+      <div
+        class:list={['leaf-fall', leaf.depth === 'far' && 'is-far']}
+        style={[
+          `--leaf-x:${leaf.x}`,
+          `--leaf-duration:${leaf.duration}s`,
+          `--leaf-delay:${leaf.delay}s`,
+          `--leaf-drift-x:${leaf.drift}vw`,
+          `--leaf-spin:${leaf.spin}deg`,
+          `--leaf-sway-duration:${leaf.sway}s`,
+          `--leaf-opacity:${leaf.opacity}`,
+        ].join(';')}
+      >
+        <div class="leaf-sway">
+          <MapleLeaf class="leaf" size={leaf.size} style={`color: var(${leaf.color})`} />
+        </div>
+      </div>
     ))
   }
 </div>

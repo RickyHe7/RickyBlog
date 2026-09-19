@@ -135,28 +135,14 @@
 }
 
 /* ============================================================================
-   秋天落叶 —— 背景氛围动效
-   纯 CSS，零 JS，零图片请求。7 片叶子，opacity 很低，只做氛围不抢阅读。
-   尊重 prefers-reduced-motion（上面的 base 里已统一关闭动画）。
+   秋天氛围 —— 背景层
+   零 JS、零图片请求（纯 CSS 渐变 + 内联 SVG 噪声 + 内联枫叶路径）。
+   三层结构：
+     ::before   秋日天光（暖色光晕 + 纸色渐变）
+     ::after    极淡纸纹（SVG feTurbulence 的 data URI）
+     .leaf-fall > .leaf-sway > svg  三层景深的落叶
+   想整体调淡/调浓只改 .leaf-scene 上那组自定义属性。
    ========================================================================== */
-@keyframes leaf-drift {
-  0% {
-    transform: translate3d(0, -12vh, 0) rotate(0deg);
-    opacity: 0;
-  }
-  8% {
-    opacity: var(--leaf-opacity, 0.35);
-  }
-  85% {
-    opacity: var(--leaf-opacity, 0.35);
-  }
-  100% {
-    transform: translate3d(var(--leaf-drift-x, 6vw), 112vh, 0)
-      rotate(var(--leaf-spin, 360deg));
-    opacity: 0;
-  }
-}
-
 .leaf-scene {
   position: fixed;
   inset: 0;
@@ -164,84 +150,185 @@
   overflow: hidden;
   pointer-events: none;
   user-select: none;
+
+  /* —— 氛围强度总开关 ——
+     数值是按对比度算出来的，不是随手填的：
+     天光最浓的角落（左下）合成后约 rgb(249,231,214)，正文链接 maple-700 对此底
+     仍有 ≈ 5.2:1，过 AA。想更浓可以调到 0.5 左右，但请顺手复核一下链接对比度。 */
+  --sky-strength: 0.4; /* 天光渐变 */
+  --grain-strength: 0.04; /* 纸纹 */
 }
 
-.leaf {
+/* 秋日天光：右上银杏暖光、左下枫色、顶部一抹枫红；整体保持很淡 */
+.leaf-scene::before {
+  content: '';
   position: absolute;
-  top: -8vh;
-  animation: leaf-drift var(--leaf-duration, 20s) linear var(--leaf-delay, 0s)
-    infinite;
+  inset: 0;
+  opacity: var(--sky-strength);
+  background-image: radial-gradient(
+      52rem 36rem at 84% -12%,
+      var(--color-ginkgo-300) 0%,
+      transparent 60%
+    ),
+    /* 左下用 maple-200 而不是 300：这片正好落在正文链接可能出现的区域，
+       淡一档能明显拉开对比度余量 */
+      radial-gradient(44rem 30rem at 4% 108%, var(--color-maple-200) 0%, transparent 58%),
+    radial-gradient(28rem 20rem at 26% -8%, var(--color-crimson-400) 0%, transparent 62%),
+    linear-gradient(
+      180deg,
+      var(--color-paper-50) 0%,
+      var(--color-paper-100) 50%,
+      var(--color-paper-300) 100%
+    );
+}
+
+/* 暗色：同构，换夜色令牌，光晕更收敛 */
+.dark .leaf-scene {
+  --sky-strength: 0.4;
+  --grain-strength: 0.05;
+}
+.dark .leaf-scene::before {
+  background-image: radial-gradient(
+      52rem 36rem at 84% -12%,
+      var(--color-maple-800) 0%,
+      transparent 62%
+    ),
+    radial-gradient(44rem 30rem at 4% 108%, var(--color-crimson-600) 0%, transparent 60%),
+    radial-gradient(28rem 20rem at 26% -8%, var(--color-ginkgo-600) 0%, transparent 64%),
+    linear-gradient(
+      180deg,
+      var(--color-night-800) 0%,
+      var(--color-night-900) 55%,
+      var(--color-night-950) 100%
+    );
+}
+
+/* 纸纹。这是本层唯一的栅格化成本 —— 嫌卡就把 --grain-strength 调成 0 */
+.leaf-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain-strength);
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+.dark .leaf-scene::after {
+  mix-blend-mode: screen;
+}
+
+/* 叶片拆成两层动画：
+     .leaf-fall  竖直下落（重力，匀速线性）
+     .leaf-sway  横向摆动 + 翻转（风，ease-in-out 往返）
+   拆开是为了让「被风吹」来自两套不同节奏的运动，
+   而不是一条直线轨迹加一个匀速旋转（那样很假）。 */
+.leaf-fall {
+  position: absolute;
+  top: -14vh;
+  left: var(--leaf-x, 50%);
+  animation: leaf-fall var(--leaf-duration, 30s) linear var(--leaf-delay, 0s) infinite;
+  will-change: transform, opacity;
+}
+.leaf-sway {
+  animation: leaf-sway var(--leaf-sway-duration, 6s) ease-in-out infinite alternate;
   will-change: transform;
 }
-
-/* 每片叶子给不同的起点、速度、漂移方向和旋转圈数 */
-.leaf:nth-child(1) {
-  left: 6%;
-  --leaf-duration: 26s;
-  --leaf-delay: 0s;
-  --leaf-drift-x: 7vw;
-  --leaf-spin: 420deg;
-  --leaf-opacity: 0.3;
-}
-.leaf:nth-child(2) {
-  left: 22%;
-  --leaf-duration: 34s;
-  --leaf-delay: 4s;
-  --leaf-drift-x: -5vw;
-  --leaf-spin: -360deg;
-  --leaf-opacity: 0.22;
-}
-.leaf:nth-child(3) {
-  left: 38%;
-  --leaf-duration: 29s;
-  --leaf-delay: 9s;
-  --leaf-drift-x: 9vw;
-  --leaf-spin: 300deg;
-  --leaf-opacity: 0.26;
-}
-.leaf:nth-child(4) {
-  left: 54%;
-  --leaf-duration: 38s;
-  --leaf-delay: 2s;
-  --leaf-drift-x: -8vw;
-  --leaf-spin: -480deg;
-  --leaf-opacity: 0.2;
-}
-.leaf:nth-child(5) {
-  left: 69%;
-  --leaf-duration: 31s;
-  --leaf-delay: 12s;
-  --leaf-drift-x: 6vw;
-  --leaf-spin: 360deg;
-  --leaf-opacity: 0.28;
-}
-.leaf:nth-child(6) {
-  left: 84%;
-  --leaf-duration: 24s;
-  --leaf-delay: 6s;
-  --leaf-drift-x: -6vw;
-  --leaf-spin: -320deg;
-  --leaf-opacity: 0.24;
-}
-.leaf:nth-child(7) {
-  left: 93%;
-  --leaf-duration: 36s;
-  --leaf-delay: 15s;
-  --leaf-drift-x: 4vw;
-  --leaf-spin: 400deg;
-  --leaf-opacity: 0.18;
+.leaf {
+  display: block;
 }
 
-/* 小屏省电：只留 3 片 */
+/* 景深：远景糊一点、也更淡，让背景有纵深感而不是一层平贴的贴纸 */
+.leaf-fall.is-far {
+  filter: blur(1.8px);
+}
+
+@keyframes leaf-fall {
+  0% {
+    transform: translate3d(0, -8vh, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: var(--leaf-opacity, 0.26);
+  }
+  88% {
+    opacity: var(--leaf-opacity, 0.26);
+  }
+  100% {
+    transform: translate3d(0, 124vh, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes leaf-sway {
+  from {
+    transform: translate3d(calc(var(--leaf-drift-x, 6vw) * -0.5), 0, 0)
+      rotate(calc(var(--leaf-spin, 360deg) * -0.5));
+  }
+  to {
+    transform: translate3d(calc(var(--leaf-drift-x, 6vw) * 0.5), 0, 0)
+      rotate(calc(var(--leaf-spin, 360deg) * 0.5));
+  }
+}
+
+/* 这片叶子要留给小屏 —— 只留前 5 片（远景占多数，省电也省心） */
 @media (max-width: 640px) {
-  .leaf:nth-child(n + 4) {
+  .leaf-fall:nth-child(n + 6) {
     display: none;
   }
 }
 
-/* 完全不支持动画时直接不显示（避免一堆静止的叶子堆在页面上） */
+/* 完全不支持动画时整层不显示（避免一片静止的叶子贴在页面上） */
 @media (prefers-reduced-motion: reduce) {
   .leaf-scene {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   鼠标跟随折线 —— 逻辑见 src/components/CursorTrail.astro
+   画布只画「折线」（相邻采样点用直线相连），头部由一片内联枫叶跟随。
+   层级刻意放在内容(z-10)之上、吸顶导航(z-50)之下，所以不会盖住菜单。
+   ========================================================================== */
+.trail-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+
+  /* 折线强度总开关：0 = 关掉，0.5 是默认，调大更明显 */
+  --trail-strength: 0.5;
+}
+
+.trail-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.trail-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* 让叶子的视觉中心正好落在指针尖上（叶子 size = 18，一半就是 9） */
+  margin: -9px 0 0 -9px;
+  color: var(--color-maple-500);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.dark .trail-head {
+  color: var(--color-maple-300);
+}
+
+/* 触摸设备没有指针可言，整层省掉；「减少动效」时也一并关掉 */
+@media (pointer: coarse) {
+  .trail-layer {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trail-layer {
     display: none;
   }
 }

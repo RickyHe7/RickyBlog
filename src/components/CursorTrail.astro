@@ -1,0 +1,193 @@
+---
+import MapleLeaf from './MapleLeaf.astro';
+
+/**
+ * 鼠标跟随「折线」。
+ *
+ * 做法：记录指针采样点，在 canvas 上用**直线**把相邻点连起来（所以是真的折线，
+ * 不是平滑曲线），每段按「新旧」决定粗细与透明度 —— 头部粗而实、尾部细而虚，
+ * 形成一条被风带走的轨迹；头部再跟一片内联枫叶（复用 MapleLeaf，形状不重复定义）。
+ *
+ * 刻意的约束：
+ *   - 只在**精确指针**设备上启用（`pointer: fine`）—— 触摸屏没有「跟随」可言，
+ *     而且手机上一直跑 rAF 纯属浪费电，所以 CSS 里也把这层 display:none 了；
+ *   - `prefers-reduced-motion: reduce` 时完全不启动；
+ *   - 停止移动后会平滑淡出并**停掉 rAF**，不空转；
+ *   - 配色从设计令牌里读（跟暗色模式联动），不硬编码颜色；
+ *   - 层级在内容之上、吸顶导航之下，且 pointer-events:none，不影响任何交互与选中。
+ *
+ * 想调强弱：改 global.css 里 .trail-layer 的 `--trail-strength`（0 就是关掉）。
+ */
+---
+
+<div class="trail-layer" data-trail aria-hidden="true" data-pagefind-ignore>
+  <canvas class="trail-canvas"></canvas>
+  <span class="trail-head" data-trail-head>
+    <MapleLeaf size={18} />
+  </span>
+</div>
+
+<script>
+  const layer = document.querySelector<HTMLElement>('[data-trail]');
+  const canvas = layer?.querySelector('canvas');
+  const head = layer?.querySelector<HTMLElement>('[data-trail-head]');
+  const ctx = canvas?.getContext('2d');
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = window.matchMedia('(pointer: fine)').matches;
+
+  if (layer && canvas && ctx && head && !reduceMotion && finePointer) {
+    /* ---------------------------------------------------------------- 可调参数 */
+    const LIFE = 520; // 每个采样点的存活时间(ms)：越小，折线越短
+    const IDLE_HOLD = 240; // 停手后再保持多久(ms)
+    const FADE_OUT = 260; // 淡出时长(ms)
+    const MAX_POINTS = 26; // 采样点上限，防止快速甩动时点数爆炸
+    const MIN_STEP = 7; // 采样间距(px)：太小会抖、太大显得断
+    const MAX_WIDTH = 3.4; // 头部线宽
+    const MIN_WIDTH = 0.8; // 尾部线宽
+
+    type Point = { x: number; y: number; t: number };
+    type Rgb = [number, number, number];
+
+    let points: Point[] = [];
+    let frame = 0; // 排队的 rAF id，0 表示空闲
+    let activeUntil = 0;
+    let headAngle = 0;
+    let width = 0;
+    let height = 0;
+    let strength = 0.5;
+    let palette: Rgb[] = [];
+
+    const readVar = (name: string, fallback: string) =>
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+    const toRgb = (value: string): Rgb => {
+      const hex = value.replace('#', '');
+      const full =
+        hex.length === 3
+          ? hex
+              .split('')
+              .map((c) => c + c)
+              .join('')
+          : hex;
+      const n = Number.parseInt(full.slice(0, 6), 16);
+      return Number.isNaN(n) ? [226, 112, 31] : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    };
+
+    /** 从设计令牌取配色 —— 跟主题一起变，不硬编码颜色 */
+    const readTheme = () => {
+      const dark = document.documentElement.classList.contains('dark');
+      palette = [
+        readVar(dark ? '--color-ginkgo-400' : '--color-ginkgo-500', '#d9a62e'),
+        readVar(dark ? '--color-maple-300' : '--color-maple-500', '#e2701f'),
+        readVar(dark ? '--color-crimson-400' : '--color-crimson-500', '#c0392b'),
+      ].map(toRgb);
+
+      const parsed = Number.parseFloat(
+        getComputedStyle(layer).getPropertyValue('--trail-strength').trim()
+      );
+      strength = Number.isNaN(parsed) ? 0.5 : parsed;
+    };
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      points = [];
+    };
+
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(draw);
+    };
+
+    const draw = (now: number) => {
+      frame = 0;
+      points = points.filter((p) => now - p.t < LIFE);
+
+      // 停手后先保持一小会儿再淡出，否则一停下就「啪」地消失，很突兀
+      const idle = now > activeUntil;
+      const fade = idle ? Math.max(0, 1 - (now - activeUntil - IDLE_HOLD) / FADE_OUT) : 1;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // 逐段画：k 从 0（尾）到 1（头），越靠近头部越粗、越实
+      for (let i = 1; i < points.length; i += 1) {
+        const a = points[i - 1];
+        const b = points[i];
+        const k = i / points.length;
+        const alpha = (1 - (now - b.t) / LIFE) * k * strength * fade;
+        if (alpha <= 0.012) continue;
+
+        const [r, g, bl] = palette[Math.min(palette.length - 1, Math.floor(k * palette.length))];
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${bl}, ${alpha.toFixed(3)})`;
+        ctx.lineWidth = MIN_WIDTH + (MAX_WIDTH - MIN_WIDTH) * k;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      if (points.length > 0) {
+        const last = points[points.length - 1];
+        head.style.transform = `translate3d(${last.x}px, ${last.y}px, 0) rotate(${headAngle}deg)`;
+        head.style.opacity = (fade * 0.9).toFixed(3);
+      } else {
+        head.style.opacity = '0';
+      }
+
+      if (points.length > 0 && fade > 0.01) schedule();
+    };
+
+    const onMove = (event: PointerEvent) => {
+      const now = performance.now();
+      const x = event.clientX;
+      const y = event.clientY;
+      const last = points[points.length - 1];
+
+      activeUntil = now + IDLE_HOLD;
+
+      if (!last || Math.hypot(x - last.x, y - last.y) >= MIN_STEP) {
+        // 头部朝向跟着水平位移轻微摆动，像被风带的叶子（限制在 ±32°）
+        if (last) headAngle = Math.max(-32, Math.min(32, (x - last.x) * 1.6));
+        points.push({ x, y, t: now });
+        if (points.length > MAX_POINTS) points.shift();
+      } else {
+        // 原地微动时不新增点，只刷新存活时间，免得折线在同一个地方堆成一团
+        last.t = now;
+      }
+
+      head.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${headAngle}deg)`;
+      schedule();
+    };
+
+    readTheme();
+    resize();
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('resize', resize);
+    // 滚动时坐标系整体位移，留着旧点会拉出一条假斜线
+    window.addEventListener(
+      'scroll',
+      () => {
+        points = [];
+      },
+      { passive: true }
+    );
+    window.addEventListener('blur', () => {
+      activeUntil = 0;
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        points = [];
+        activeUntil = 0;
+      }
+    });
+    // 复用 ThemeToggle 已有的约定事件，不再自己监听 class 变化
+    document.addEventListener('themechange', readTheme);
+  }
+</script>

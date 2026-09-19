@@ -3,6 +3,7 @@ import '../styles/global.css';
 
 import Analytics from '../components/Analytics.astro';
 import BaseHead from '../components/BaseHead.astro';
+import CursorTrail from '../components/CursorTrail.astro';
 import FallingLeaves from '../components/FallingLeaves.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
@@ -20,9 +21,11 @@ interface Props {
   jsonLd?: JsonLd[];
   /** 关掉背景落叶（例如 404 页更有意境的克制感） */
   leaves?: boolean;
+  /** 关掉鼠标跟随折线（只在精确指针设备生效，触摸端本来就自动关闭） */
+  trail?: boolean;
 }
 
-const { leaves = true, ...head } = Astro.props;
+const { leaves = true, trail = true, ...head } = Astro.props;
 ---
 
 <!doctype html>
@@ -53,6 +56,13 @@ const { leaves = true, ...head } = Astro.props;
       </main>
       <Footer />
     </div>
+
+    <!--
+      折线层在内容之上、吸顶导航之下（global.css 里 z-30），
+      同样 pointer-events:none，所以不影响点击与文字选中。
+      放在内容之后是为了让它压在文字上 —— 否则遇到有底色的卡片会整条消失。
+    -->
+    {trail && <CursorTrail />}
 
     <Analytics />
   </body>
