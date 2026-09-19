@@ -2,7 +2,7 @@ import rss from '@astrojs/rss';
 import type { APIRoute } from 'astro';
 
 import { SITE } from '../consts';
-import { FALLBACK_ORIGIN } from '../lib/seo';
+import { requireSite } from '../lib/seo';
 import { getPublishedPosts } from '../lib/posts';
 
 /**
@@ -18,7 +18,7 @@ export const GET: APIRoute = async (context) => {
   return rss({
     title: `${SITE.name} · ${SITE.tagline}`,
     description: SITE.description,
-    site: context.site ?? FALLBACK_ORIGIN,
+    site: requireSite(context.site),
     trailingSlash: false,
     customData: [
       `<language>zh-cn</language>`,

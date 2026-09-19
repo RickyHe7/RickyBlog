@@ -2,19 +2,31 @@ import { SITE, SOCIALS } from '../consts';
 import type { Post } from './posts';
 
 /**
- * 兜底 origin。
+ * 取站点 origin，**拿不到就直接报错**。
  *
- * 正常情况下 `Astro.site` 一定有值（astro.config.mjs 里设了 site），这里只是防御性兜底。
- * 它与 astro.config.mjs 里的 `CANONICAL_SITE` 保持一致 —— 换域名时两处都要改。
+ * 为什么这里刻意不给兜底域名：
+ *   早期版本给了一个兜底 origin，后果是「域名写错时不报错、静默把 canonical 指向错域名」。
+ *   这一点踩过两次 ——
+ *     1. 曾拿 `rickyblog.pages.dev` 当兜底，后来发现那个域名其实属于别人的博客；
+ *     2. `.env` 没被读到（Astro 不注入配置期的 process.env）而回退到占位值。
+ *   **静默指错比构建失败危险得多**，所以改成硬失败。
  *
- * ⚠️ 绝不要填任何 `*.pages.dev` 域名当兜底：`rickyblog.pages.dev` 实际属于别人的博客，
- * 拿它兜底会让 canonical / sitemap 悄悄指向陌生人的站点。
+ * 现在 `Astro.site` 只可能来自 astro.config.mjs 的 `site` 字段，
+ * 而那个字段就是全站**唯一**的域名来源 —— 拿不到值说明配置被改坏了，应当立刻发现。
  */
-export const FALLBACK_ORIGIN = 'https://rickysblog.1174716217.workers.dev/';
+export function requireSite(site: URL | undefined): URL {
+  if (!site) {
+    throw new Error(
+      '[seo] Astro.site 为空。请检查 astro.config.mjs 的 `site` 字段 —— ' +
+        '它是全站唯一的域名来源，sitemap / canonical / OG / RSS 全部由它推导。'
+    );
+  }
+  return site;
+}
 
 /** 把站内路径拼成绝对 URL。sitemap / canonical / OG / RSS 全走这里，保证一致。 */
 export function absoluteUrl(path: string, site: URL | undefined): string {
-  return new URL(path, site ?? FALLBACK_ORIGIN).href;
+  return new URL(path, requireSite(site)).href;
 }
 
 export type JsonLd = Record<string, unknown>;

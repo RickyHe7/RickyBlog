@@ -394,13 +394,17 @@ Cloudflare 免费版在中国大陆**没有专门优化**：默认可能把你�
 
 ### 换域名后需要改的地方（备忘）
 
-| 文件 / 位置 | 改什么 |
+**代码里只有一处写死域名** —— `astro.config.mjs` 的 `CANONICAL_SITE`。
+（`src/lib/seo.ts` 不再有兜底域名：拿不到 `Astro.site` 时会**直接报错**，
+而不是退回某个可能写错的域名。这是刻意的 —— 静默指错比构建失败危险得多。）
+
+| 位置 | 改什么 |
 | --- | --- |
-| `astro.config.mjs` → `CANONICAL_SITE` | 新域名（**必须改**，否则 canonical / sitemap 还是旧地址） |
+| **`astro.config.mjs` → `CANONICAL_SITE`** | 新域名。**改这一行就够了**，全站 canonical / sitemap / OG / RSS 都跟着变 |
 | `wrangler.jsonc` → `name` | 仅当 Worker 名字也变了才改 |
-| `wrangler.jsonc` → `routes` | 绑了自定义域名后可以（也可以不改，Dashboard 上绑就够了） |
+| `wrangler.jsonc` → `routes` | 绑了自定义域名后可以取消注释；也可以不动，只在控制台绑 |
 | Cloudflare → Domains & Routes | 加自定义域名（在网页上做） |
-| Cloudflare → 环境变量 `SITE_URL` | 如果之前加过这条，**改成新域名或直接删掉**（它的优先级比配置高，填旧值会覆盖） |
+| Cloudflare → `SITE_URL` 环境变量 | 之前加过的话，**改成新域名或直接删掉**。它的优先级比配置高，留着旧值会盖掉正确的 |
 
 ---
 

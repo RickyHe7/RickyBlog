@@ -28,15 +28,23 @@ import tailwindcss from '@tailwindcss/vite';
 const fileEnv = loadEnv(process.env.NODE_ENV === 'production' ? 'production' : 'development', process.cwd(), '');
 
 /**
- * 真实站点地址，写死作为最终兜底。
+ * ⭐ 真实站点地址 —— **全站唯一的域名来源，换域名只改这一行。**
  *
  * 为什么写死：环境变量这条链有三个环节都可能失效 ——
- *   Cloudflare 上的变量没设、变量值写错、或者 Workers Builds 没有把变量暴露给构建进程。
+ *   Cloudflare 上的变量没设、变量值写错、或者 Workers Builds 没把变量暴露给构建进程。
  * 而 sitemap / canonical / OG / RSS 一旦指向错域名，搜索引擎就会收录错的东西。
  * 个人博客只有一个正式域名，写死在这里是收益最大、风险最低的做法。
  *
- * 换域名时改这一行（同时改 wrangler.jsonc 里的 name，如果 Worker 名也变了）。
- * 优先级仍是：环境变量 > .env > 这里，方便临时用别的值构建。
+ * 代码里**没有第二处**写死地址：src/lib/seo.ts 的 absoluteUrl / requireSite
+ * 拿不到 `Astro.site` 时会直接抛错，不会退回某个兜底域名。
+ * （这是踩过坑之后改的 —— 兜底域名会让「写错域名」变成静默故障。）
+ *
+ * 只有这两种情况需要顺带改别的地方：
+ *   - Worker 名字也变了 → `wrangler.jsonc` 的 `name`
+ *   - 绑了新域名 → `wrangler.jsonc` 里注释掉的 `routes`（或直接在 Cloudflare 控制台绑）
+ *
+ * 优先级：环境变量 SITE_URL > `.env` 的 SITE_URL > 这里，方便临时用别的值构建。
+ * ⚠️ 反过来说，Cloudflare 里那条 `SITE_URL` 如果值不对，会盖掉这里 —— 不确定就删掉它。
  */
 const CANONICAL_SITE = 'https://rickysblog.1174716217.workers.dev';
 

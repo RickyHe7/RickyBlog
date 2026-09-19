@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 
-import { FALLBACK_ORIGIN } from '../lib/seo';
+import { requireSite } from '../lib/seo';
 
 /**
  * robots.txt 用端点生成而不是放 public/ 静态文件，
@@ -8,7 +8,7 @@ import { FALLBACK_ORIGIN } from '../lib/seo';
  * 换域名时不会漏改这里。
  */
 export const GET: APIRoute = ({ site }) => {
-  const base = (site ?? new URL(FALLBACK_ORIGIN)).href.replace(/\/$/, '');
+  const base = requireSite(site).href.replace(/\/$/, '');
 
   const body = `User-agent: *
 Allow: /
