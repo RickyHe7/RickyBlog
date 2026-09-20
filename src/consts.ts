@@ -12,12 +12,12 @@ export const SITE = {
   /** 用于 SEO description 与首页介绍 */
   description:
     '小技巧、读书笔记与生活记录。写下踩过的坑和想明白的事，记录成长。',
-  author: '贺瑞奇',
+  author: 'Ricky',
   authorEn: 'Ricky',
   email: 'ricky7.he@qq.com',
   locale: 'zh-CN',
   /** 首页「关于」区块的自我介绍（来自需求文档，简短克制） */
-  intro: '社畜。写 .NET 和 C++，做机器上的小工具，喜欢把重复劳动交出去。',
+  intro: '社畜。忙忙碌碌中记录有趣的事。',
   /** 标题后缀模板 */
   titleSuffix: "Ricky's Blog",
 } as const;
