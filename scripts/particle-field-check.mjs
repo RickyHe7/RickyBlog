@@ -62,9 +62,6 @@ let lastMove = null;
 let cursorLineDists = [];
 /** 每帧所有点的位置（顺序 = 粒子数组顺序），挑一颗粒子做「被推开」的精确测量 */
 let arcPositions = [];
-const cursorMinDist = () => (cursorLineDists.length ? Math.min(...cursorLineDists) : Number.NaN);
-const cursorMeanDist = () =>
-  cursorLineDists.length ? cursorLineDists.reduce((a, b) => a + b, 0) / cursorLineDists.length : Number.NaN;
 
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
 
@@ -296,8 +293,6 @@ moveCursorTo(CURSOR.x, CURSOR.y);
 t = runFrames(1, t);
 const mouseLinks = calls.stroke - aMouse;
 const firstCount = cursorLineDists.length;
-const firstMin = cursorMinDist();
-const firstMean = cursorMeanDist();
 check('鼠标激活后出现光标连线', firstCount > 0, `${firstCount} 条（141px 内期望约 10 颗粒子）`);
 check('总连线数随之增加', mouseLinks > baseLinks, `${mouseLinks} vs 基线 ${baseLinks}`);
 check(

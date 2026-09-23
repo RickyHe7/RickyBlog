@@ -7,6 +7,7 @@ import Icon from '../components/Icon.astro';
 import { SITE } from '../consts';
 import { getAllCategories, getAllSeries, getFeaturedPosts, getPublishedPosts } from '../lib/posts';
 import { personJsonLd, websiteJsonLd } from '../lib/seo';
+import { withBase } from '../lib/url';
 
 /**
  * 首页。
@@ -22,7 +23,6 @@ const categories = getAllCategories(posts);
 const series = getAllSeries(posts);
 const site = Astro.site;
 ---
-
 <BaseLayout
   description={SITE.description}
   jsonLd={[websiteJsonLd(site), personJsonLd(site)]}
@@ -71,7 +71,7 @@ const site = Astro.site;
               最新文章
             </h2>
             <a
-              href="/posts"
+              href={withBase('/posts')}
               class="inline-flex items-center gap-1 text-xs font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
             >
               全部 {posts.length} 篇
@@ -95,7 +95,7 @@ const site = Astro.site;
 
           <div class="mt-6">
             <a
-              href="/archives"
+              href={withBase('/archives')}
               class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/70 px-3.5 py-2 text-sm text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/60 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
             >
               <Icon name="list" size={15} />
@@ -119,7 +119,7 @@ const site = Astro.site;
                 {categories.map((category) => (
                   <li>
                     <a
-                      href={`/categories/${encodeURIComponent(category.name)}`}
+                      href={withBase(`/categories/${encodeURIComponent(category.name)}`)}
                       class="card-lift flex items-center justify-between rounded-leaf border border-paper-200 bg-white/70 px-4 py-3 hover:border-maple-300 dark:border-night-700 dark:bg-night-800/60 dark:hover:border-maple-800"
                     >
                       <span class="flex items-center gap-2 text-sm font-medium text-bark-900 dark:text-night-100">
@@ -165,7 +165,7 @@ const site = Astro.site;
                               {index + 1}.
                             </span>
                             <a
-                              href={`/posts/${post.id}`}
+                              href={withBase(`/posts/${post.id}`)}
                               class="text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
                             >
                               {post.data.title}

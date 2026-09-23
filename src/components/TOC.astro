@@ -14,7 +14,6 @@ const { headings, variant = 'sticky', class: className = '' } = Astro.props;
 // 只取 h2 / h3：更深的层级在小屏会挤成一团，收益也低
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
-
 {
   toc.length > 0 && (
     <>

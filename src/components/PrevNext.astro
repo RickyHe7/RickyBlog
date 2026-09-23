@@ -1,6 +1,7 @@
 ---
 import type { Post } from '../lib/posts';
 import Icon from './Icon.astro';
+import { withBase } from '../lib/url';
 
 interface Props {
   prev?: Post;
@@ -12,7 +13,6 @@ interface Props {
 const { prev, next, series } = Astro.props;
 const hasAny = Boolean(prev || next);
 ---
-
 {
   hasAny && (
     <nav
@@ -29,7 +29,7 @@ const hasAny = Boolean(prev || next);
       <div class="grid gap-3 sm:grid-cols-2">
         {prev ? (
           <a
-            href={`/posts/${prev.id}`}
+            href={withBase(`/posts/${prev.id}`)}
             rel="prev"
             class="card-lift group rounded-leaf border border-paper-200 bg-white/70 p-4 hover:border-maple-300 dark:border-night-700 dark:bg-night-800/60 dark:hover:border-maple-800"
           >
@@ -47,7 +47,7 @@ const hasAny = Boolean(prev || next);
 
         {next && (
           <a
-            href={`/posts/${next.id}`}
+            href={withBase(`/posts/${next.id}`)}
             rel="next"
             class="card-lift group rounded-leaf border border-paper-200 bg-white/70 p-4 text-right hover:border-maple-300 sm:col-start-2 dark:border-night-700 dark:bg-night-800/60 dark:hover:border-maple-800"
           >

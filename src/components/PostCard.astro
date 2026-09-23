@@ -3,6 +3,7 @@ import type { Post } from '../lib/posts';
 import { formatDate, getReadingTime } from '../lib/format';
 import CoverImage from './CoverImage.astro';
 import Icon from './Icon.astro';
+import { withBase } from '../lib/url';
 
 interface Props {
   post: Post;
@@ -13,9 +14,9 @@ interface Props {
 const { post, featured = false } = Astro.props;
 const { data, id } = post;
 const reading = getReadingTime(post.body);
-const href = `/posts/${id}`;
+// 前件里赋给变量的路径正则扫不到，得手工包一层（子路径部署时要带 /RickyBlog 前缀）
+const href = withBase(`/posts/${id}`);
 ---
-
 <article
   class:list={[
     'card-lift group overflow-hidden rounded-leaf border border-paper-200 bg-white/85 shadow-sm shadow-maple-900/[0.03] hover:border-maple-300 hover:shadow-md hover:shadow-maple-900/[0.06] dark:border-night-700 dark:bg-night-800/70 dark:hover:border-maple-800',
@@ -42,7 +43,7 @@ const href = `/posts/${id}`;
   <div class:list={['flex flex-col p-5', featured && 'sm:justify-center sm:p-6']}>
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-bark-500 dark:text-night-400">
       <a
-        href={`/categories/${encodeURIComponent(data.category)}`}
+        href={withBase(`/categories/${encodeURIComponent(data.category)}`)}
         class="inline-flex items-center gap-1 rounded-full bg-maple-100 px-2.5 py-0.5 font-medium text-maple-800 transition-colors duration-150 hover:bg-maple-200 dark:bg-night-700 dark:text-maple-300"
       >
         <Icon name="folder" size={12} />
@@ -91,7 +92,7 @@ const href = `/posts/${id}`;
           {data.tags.slice(0, 4).map((tag) => (
             <li>
               <a
-                href={`/tags/${encodeURIComponent(tag)}`}
+                href={withBase(`/tags/${encodeURIComponent(tag)}`)}
                 class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-bark-500 transition-colors duration-150 hover:bg-paper-200 hover:text-maple-700 dark:text-night-400 dark:hover:bg-night-700 dark:hover:text-maple-300"
               >
                 <Icon name="hash" size={11} />

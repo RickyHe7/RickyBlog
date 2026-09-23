@@ -1,0 +1,82 @@
+# 部署到 GitHub Pages
+#
+# ⚠️ 用之前要在仓库里做一次设置：
+#    Settings → Pages → Build and deployment → Source 选 **GitHub Actions**
+#    （不要选 "Deploy from a branch"，本工作流走的是 Actions 那条路）
+#
+# 这条路的好处：不需要 gh-pages 分支、不需要把 dist 提交进仓库 ——
+# 每次推送后由 Actions 现场构建，产物作为 artifact 直接发布。
+#
+# 站点地址（项目站点，注意带仓库名的子路径）：
+#    https://rickyhe7.github.io/RickyBlog/
+# 这个子路径必须和 astro.config.mjs 里的 `SITE_BASE` 保持一致，否则样式和链接会 404。
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      # 只监听这条分支；以后想直接部署 main，把这里换成 main 即可
+      - github-pages
+  # 也允许在 Actions 页面手动点一次（部署出问题时很方便）
+  workflow_dispatch:
+
+# GITHUB_TOKEN 的最小权限：读代码、写 Pages、拿 OIDC 令牌
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只跑一个部署。新的推送会取消排队中的旧任务，
+# 但不打断"正在发布"的那一个（否则可能把线上的中间状态留在页面上）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 仓库根目录有 .nvmrc（内容 22），Astro 7 要求 Node ≥ 22.12
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 生成类型
+        # ⚠️ 全新检出时 .astro/ 是不存在的（它在 .gitignore 里），而 `astro check` 依赖它 ——
+        # 不先 sync 的话 CI 上会直接报找不到类型，本地却复现不出来（本地 .astro/ 早就有了）
+        run: npx astro sync
+
+      - name: 类型检查
+        # astro check：0 error 才继续。这一步能拦住"页面能构建但模板里有类型错误"的情况
+        run: npm run check
+
+      - name: 构建
+        run: npm run build
+
+      - name: 检查子路径前缀
+        # 子路径部署最容易坏的地方：某处链接少了 /RickyBlog 前缀 —— 而且往往只坏一两个入口。
+        # 这一步穷举 dist 里所有 HTML 的 href/src，漏了就失败，免得带着 404 上线。
+        run: node scripts/check-subpath.mjs
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          # astro build 的输出目录
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

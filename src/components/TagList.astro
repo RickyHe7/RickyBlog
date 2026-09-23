@@ -1,5 +1,6 @@
 ---
 import Icon from './Icon.astro';
+import { withBase } from '../lib/url';
 
 interface Props {
   items: { name: string; count?: number }[];
@@ -12,13 +13,12 @@ interface Props {
 const { items, current, size = 'md', class: className = '' } = Astro.props;
 const isCurrent = (name: string) => current === name;
 ---
-
 <ul class:list={['flex flex-wrap gap-1.5', className]}>
   {
     items.map((item) => (
       <li>
         <a
-          href={`/tags/${encodeURIComponent(item.name)}`}
+          href={withBase(`/tags/${encodeURIComponent(item.name)}`)}
           aria-current={isCurrent(item.name) ? 'page' : undefined}
           class:list={[
             'inline-flex items-center gap-1 rounded-full border transition-colors duration-150',

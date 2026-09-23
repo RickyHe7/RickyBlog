@@ -1,4 +1,5 @@
 import { SITE, SOCIALS } from '../consts';
+import { withBase } from './url';
 import type { Post } from './posts';
 
 /**
@@ -24,9 +25,16 @@ export function requireSite(site: URL | undefined): URL {
   return site;
 }
 
-/** 把站内路径拼成绝对 URL。sitemap / canonical / OG / RSS 全走这里，保证一致。 */
+/**
+ * 把**站点根路径**拼成绝对 URL。canonical / OG / RSS / JSON-LD 全走这里，保证一致。
+ *
+ * ⚠️ 它内部会自动补上部署子路径（`withBase`），所以调用方照旧写 '/posts' 就行 ——
+ *    这条是踩过一次的小坑：`new URL('/posts', site)` 里以斜杠开头的路径会**直接替换掉**
+ *    URL 的整个路径部分，所以子路径部署时必须先补 base，否则会指向
+ *    `https://rickyhe7.github.io/posts`（少了 /RickyBlog，404）。
+ */
 export function absoluteUrl(path: string, site: URL | undefined): string {
-  return new URL(path, requireSite(site)).href;
+  return new URL(withBase(path), requireSite(site)).href;
 }
 
 export type JsonLd = Record<string, unknown>;

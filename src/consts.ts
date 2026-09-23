@@ -4,7 +4,11 @@
  *
  * ⚠️ 关于社交链接：以下链接由 Ricky 本人提供，不要自行增补。
  *    没有的账号（例如 X / Twitter）就保持缺失，不要编造。
+ *
+ * ⚠️ 导航里的 href 一律写成**站点根路径**（'/posts'），前缀由 withBase() 补 ——
+ *    这样本站既能部署在根域名下，也能部署在 GitHub Pages 的子路径下（/RickyBlog）。
  */
+import { withBase } from './lib/url';
 
 export const SITE = {
   name: "Ricky's Blog",
@@ -23,21 +27,21 @@ export const SITE = {
 } as const;
 
 export const NAV = [
-  { label: '首页', href: '/' },
-  { label: '文章', href: '/posts' },
-  { label: '分类', href: '/categories' },
-  { label: '标签', href: '/tags' },
-  { label: '归档', href: '/archives' },
-  { label: '关于', href: '/about' },
+  { label: '首页', href: withBase('/') },
+  { label: '文章', href: withBase('/posts') },
+  { label: '分类', href: withBase('/categories') },
+  { label: '标签', href: withBase('/tags') },
+  { label: '归档', href: withBase('/archives') },
+  { label: '关于', href: withBase('/about') },
 ] as const;
 
 /** 次要入口，收进「更多」菜单与页脚 */
 export const NAV_MORE = [
-  { label: '项目', href: '/projects' },
-  { label: '友链', href: '/links' },
-  { label: '工具装备', href: '/uses' },
-  { label: '近况', href: '/now' },
-  { label: '订阅', href: '/newsletter' },
+  { label: '项目', href: withBase('/projects') },
+  { label: '友链', href: withBase('/links') },
+  { label: '工具装备', href: withBase('/uses') },
+  { label: '近况', href: withBase('/now') },
+  { label: '订阅', href: withBase('/newsletter') },
 ] as const;
 
 /** 社交链接（均由 Ricky 提供；缺失的项直接不出现） */

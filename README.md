@@ -55,7 +55,9 @@ RickyBlog/
 │  └─ og-default.png         默认社交分享图（1200×630）
 ├─ scripts/
 │  ├─ generate_og_image.py   可选：重新生成分享图（日常构建不需要）
-│  └─ check-live.ps1         线上自检：给个地址，核对全部路由 / SEO / 搜索索引
+│  ├─ check-live.ps1         线上自检：给个地址，核对全部路由 / SEO / 搜索索引
+│  ├─ check-subpath.mjs      子路径体检：扫产物里有没有漏掉 /RickyBlog 前缀的链接（CI 里会跑）
+│  └─ particle-field-check.mjs 无浏览器验证粒子层（本机起不了浏览器时用它）
 └─ src/
    ├─ consts.ts              站名 / 导航 / 社交链接 —— 改配置只改这里
    ├─ content.config.ts      内容集合与 frontmatter 校验规则
@@ -173,6 +175,14 @@ npm run preview
 完整示例见 `.env.example`。
 
 ## 部署
+
+> ### 📍 你现在在 `github-pages` 分支
+>
+> 这条分支部署到 **GitHub Pages**，地址是 **https://rickyhe7.github.io/RickyBlog/**。
+> 完整说明见 **[DEPLOY-GITHUB-PAGES.md](./DEPLOY-GITHUB-PAGES.md)**（含一次性设置、
+> 子路径为什么改动了那么多文件、以及**大陆访问会退步**这一条）。
+>
+> 下面这段是 `main` 分支的 **Cloudflare + 自有域名**方案，留着备查。
 
 走 **Cloudflare Workers · Git 集成**：推到 GitHub，Cloudflare 自动构建发布。
 

@@ -1,6 +1,7 @@
 ---
 import { SITE } from '../consts';
 import { absoluteUrl, type JsonLd } from '../lib/seo';
+import { withBase } from '../lib/url';
 
 interface Props {
   title?: string;
@@ -33,7 +34,6 @@ const canonical = absoluteUrl(Astro.url.pathname, site);
 const ogImage = absoluteUrl(image, site);
 const ogImageAlt = title ? `${title} — ${SITE.name}` : `${SITE.name} · ${SITE.tagline}`;
 ---
-
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="generator" content={Astro.generator} />
@@ -44,9 +44,9 @@ const ogImageAlt = title ? `${title} — ${SITE.name}` : `${SITE.name} · ${SITE
 {noindex && <meta name="robots" content="noindex, nofollow" />}
 
 <!-- 图标：手写 SVG 枫叶，无第三方素材 -->
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="apple-touch-icon" href="/favicon.svg" />
-<link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
+<link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
+<link rel="apple-touch-icon" href={withBase('/favicon.svg')} />
+<link rel="sitemap" type="application/xml" href={withBase('/sitemap-index.xml')} />
 <link
   rel="alternate"
   type="application/rss+xml"

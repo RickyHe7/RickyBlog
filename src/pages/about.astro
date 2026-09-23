@@ -5,13 +5,13 @@ import Icon from '../components/Icon.astro';
 import { SITE, SOCIALS } from '../consts';
 import { getPublishedPosts } from '../lib/posts';
 import { personJsonLd } from '../lib/seo';
+import { withBase } from '../lib/url';
 
 const posts = await getPublishedPosts();
 const about = await getEntry('pages', 'about');
 const Content = about ? (await render(about)).Content : undefined;
 const site = Astro.site;
 ---
-
 <ListLayout
   title={about?.data.title ?? '关于'}
   description={about?.data.description ?? `关于 ${SITE.author}。`}
@@ -27,7 +27,7 @@ const site = Astro.site;
         class="inline-flex shrink-0 rounded-full bg-gradient-to-br from-ginkgo-400 via-maple-400 to-crimson-500 p-[3px]"
       >
         <img
-          src="/avatar.svg"
+          src={withBase('/avatar.svg')}
           alt={`${SITE.author} 的头像`}
           width="88"
           height="88"
@@ -103,13 +103,13 @@ const site = Astro.site;
         <dt class="w-20 shrink-0 text-bark-500 dark:text-night-400">订阅</dt>
         <dd class="flex flex-wrap gap-x-3 text-bark-700 dark:text-night-400">
           <a
-            href="/rss.xml"
+            href={withBase('/rss.xml')}
             class="inline-flex items-center gap-1 text-maple-700 hover:text-maple-800 dark:text-maple-300"
           >
             <Icon name="rss" size={13} />RSS
           </a>
           <a
-            href="/sitemap-index.xml"
+            href={withBase('/sitemap-index.xml')}
             class="inline-flex items-center gap-1 text-maple-700 hover:text-maple-800 dark:text-maple-300"
           >
             <Icon name="link" size={13} />Sitemap

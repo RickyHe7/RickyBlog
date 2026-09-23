@@ -2,10 +2,10 @@
 import { FOOTER_NOTE, NAV, NAV_MORE, SITE, SOCIALS } from '../consts';
 import Icon from './Icon.astro';
 import MapleLeaf from './MapleLeaf.astro';
+import { withBase } from '../lib/url';
 
 const year = new Date().getFullYear();
 ---
-
 <footer
   class="mt-20 border-t border-paper-200 bg-paper-100/60 dark:border-night-700 dark:bg-night-950/60"
   data-pagefind-ignore
@@ -85,7 +85,7 @@ const year = new Date().getFullYear();
           }
           <li>
             <a
-              href="/rss.xml"
+              href={withBase('/rss.xml')}
               class="inline-flex items-center gap-1.5 text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
             >
               <Icon name="rss" size={14} />RSS 订阅
@@ -93,7 +93,7 @@ const year = new Date().getFullYear();
           </li>
           <li>
             <a
-              href="/sitemap-index.xml"
+              href={withBase('/sitemap-index.xml')}
               class="inline-flex items-center gap-1.5 text-bark-700 transition-colors duration-150 hover:text-maple-700 dark:text-night-400 dark:hover:text-maple-300"
             >
               <Icon name="link" size={14} />Sitemap

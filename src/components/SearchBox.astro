@@ -1,7 +1,7 @@
 ---
 import Icon from './Icon.astro';
+import { withBase } from '../lib/url';
 ---
-
 <section aria-label="站内搜索" class="not-prose">
   <!--
     Pagefind 在构建后工作，dev server 下不存在索引。
@@ -34,7 +34,7 @@ npm run preview</code></pre>
         >/preview 地址下的 /search</code
       >，搜索即可正常工作。也可以先直接
       <a
-        href="/posts"
+        href={withBase('/posts')}
         class="font-medium text-maple-700 hover:text-maple-800 dark:text-maple-300"
         >浏览全部文章</a
       >。
@@ -44,8 +44,8 @@ npm run preview</code></pre>
   <noscript>
     <p class="mt-4 text-sm text-bark-500 dark:text-night-400">
       站内搜索需要启用 JavaScript。你也可以直接前往
-      <a href="/posts" class="font-medium text-maple-700">文章列表</a>
-      或 <a href="/archives" class="font-medium text-maple-700">归档页</a> 浏览。
+      <a href={withBase('/posts')} class="font-medium text-maple-700">文章列表</a>
+      或 <a href={withBase('/archives')} class="font-medium text-maple-700">归档页</a> 浏览。
     </p>
   </noscript>
 </section>
@@ -88,8 +88,12 @@ npm run preview</code></pre>
 </style>
 
 <script>
-  const UI_CSS = '/pagefind/pagefind-ui.css';
-  const UI_JS = '/pagefind/pagefind-ui.js';
+  import { withBase } from '../lib/url';
+
+  // Pagefind 的产物在 dist/pagefind/ 下，子路径部署时要带前缀（否则 404 → 搜索直接不可用）
+  const UI_CSS = withBase('/pagefind/pagefind-ui.css');
+  const UI_JS = withBase('/pagefind/pagefind-ui.js');
+  const PF_BUNDLE = withBase('/pagefind/');
 
   function showFallback(title: string, message: string) {
     const container = document.getElementById('search');
@@ -157,6 +161,8 @@ npm run preview</code></pre>
 
     new PagefindUI({
       element: '#search',
+      // 告诉 Pagefind 去哪里取索引/分片。默认是 '/pagefind/'，子路径部署下会取错
+      bundlePath: PF_BUNDLE,
       showSubResults: true,
       showImages: false,
       excerptLength: 20,

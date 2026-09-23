@@ -2,6 +2,7 @@
 import Icon from './Icon.astro';
 import MapleLeaf from './MapleLeaf.astro';
 import { SITE, SOCIALS } from '../consts';
+import { withBase } from '../lib/url';
 
 /**
  * 首页 Banner。
@@ -14,7 +15,6 @@ import { SITE, SOCIALS } from '../consts';
  *   - 打字机只打一遍站点副标题，不循环删除重打，避免长期干扰阅读。
  */
 ---
-
 <section
   class="relative overflow-hidden border-b border-paper-200 bg-gradient-to-b from-ginkgo-100/70 via-paper-100 to-paper-100 dark:border-night-700 dark:from-night-800 dark:via-night-900 dark:to-night-900"
   aria-labelledby="banner-title"
@@ -58,7 +58,7 @@ import { SITE, SOCIALS } from '../consts';
       class="inline-flex rounded-full bg-gradient-to-br from-ginkgo-400 via-maple-400 to-crimson-500 p-[3px] shadow-sm"
     >
       <img
-        src="/avatar.svg"
+        src={withBase('/avatar.svg')}
         alt={`${SITE.author} 的头像`}
         width="96"
         height="96"
@@ -102,7 +102,7 @@ import { SITE, SOCIALS } from '../consts';
         开始阅读
       </a>
       <a
-        href="/about"
+        href={withBase('/about')}
         class="inline-flex items-center gap-1.5 rounded-lg border border-paper-300 bg-white/70 px-4 py-2.5 text-sm font-medium text-bark-700 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/70 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
       >
         关于我

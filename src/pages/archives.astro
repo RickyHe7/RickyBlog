@@ -3,13 +3,13 @@ import ListLayout from '../layouts/ListLayout.astro';
 import Icon from '../components/Icon.astro';
 import { getPublishedPosts, groupByYear } from '../lib/posts';
 import { formatDate, getReadingTime } from '../lib/format';
+import { withBase } from '../lib/url';
 
 const posts = await getPublishedPosts();
 const years = groupByYear(posts);
 const firstYear = years.length > 0 ? years[years.length - 1].year : null;
 const lastYear = years.length > 0 ? years[0].year : null;
 ---
-
 <ListLayout
   title="归档"
   description={
@@ -49,7 +49,7 @@ const lastYear = years.length > 0 ? years[0].year : null;
                       {formatDate(post.data.date).slice(5)}
                     </time>
                     <a
-                      href={`/posts/${post.id}`}
+                      href={withBase(`/posts/${post.id}`)}
                       class="min-w-0 flex-1 text-sm text-bark-900 transition-colors duration-150 group-hover:text-maple-700 dark:text-night-100 dark:group-hover:text-maple-300"
                     >
                       <span class="line-clamp-2-safe">{post.data.title}</span>

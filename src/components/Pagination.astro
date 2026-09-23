@@ -1,14 +1,20 @@
 ---
+import { withBase } from '../lib/url';
+
 interface Props {
   currentPage: number;
   totalPages: number;
-  /** 列表根路径，例如 /posts */
+  /** 列表根路径，例如 /posts（**照常写站点根路径**，子路径前缀由这里统一补） */
   basePath: string;
 }
 
 const { currentPage, totalPages, basePath } = Astro.props;
 
-const pageUrl = (page: number) => (page === 1 ? basePath : `${basePath}/page/${page}`);
+const pageUrl = (page: number) => {
+  // 在这里补 base：这样调用方传 '/posts' 就行，不必各自关心部署在根域名还是子路径
+  const base = withBase(basePath);
+  return page === 1 ? base : `${base}/page/${page}`;
+};
 
 /** 生成页码序列，页数多时用 null 表示省略号 */
 function buildPages(current: number, total: number): (number | null)[] {

@@ -4,6 +4,7 @@ import type { APIRoute } from 'astro';
 import { SITE } from '../consts';
 import { requireSite } from '../lib/seo';
 import { getPublishedPosts } from '../lib/posts';
+import { withBase } from '../lib/url';
 
 /**
  * RSS 订阅源。
@@ -30,7 +31,8 @@ export const GET: APIRoute = async (context) => {
       title: post.data.title,
       description: post.data.description,
       pubDate: post.data.date,
-      link: `/posts/${post.id}/`,
+      // 也要带部署子路径，否则 @astrojs/rss 会把它解析到站点根（少了 /RickyBlog）
+      link: withBase(`/posts/${post.id}/`),
       categories: [post.data.category, ...post.data.tags],
       author: SITE.email,
       customData: post.data.updated

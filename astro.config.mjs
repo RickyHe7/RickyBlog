@@ -10,30 +10,59 @@ import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers';
 import tailwindcss from '@tailwindcss/vite';
 
 /**
- * ⭐ 站点地址 —— **全站唯一的域名来源。换域名只改这一行。**
+ * ⭐⭐ **部署目标 —— 换托管只改这两个常量。**
  *
- * 这里刻意**不接受环境变量覆盖**，这是踩坑之后改的：
+ *   SITE_ORIGIN  站点源（协议 + 主机）
+ *   SITE_BASE    站点所在子路径。**GitHub Pages 的"项目站点"必须填 `/<仓库名>`**
+ *                （地址形如 https://rickyhe7.github.io/RickyBlog/ → 填 '/RickyBlog'）；
+ *                部署在根域名下就填 '/'。
  *
+ * 为什么 base 必须交给 Astro 而不是自己到处拼字符串：Astro 用它给 `_astro/*`、
+ * `pagefind/*` 那些**构建产物** URL 加前缀；而我们自己写的站内链接统一走
+ * `src/lib/url.ts` 的 `withBase()`（它读的也是这个 base）。两边一致，
+ * 于是同一份代码既能放根域名、也能放子路径 —— 换托管真的只改这里。
+ */
+const SITE_ORIGIN = 'https://rickyhe7.github.io';
+const SITE_BASE = '/RickyBlog';
+
+/**
+ * 去掉结尾斜杠后的子路径；部署在根路径时是空串（`'/'.replace(/\/+$/,'') === ''`）。
+ *
+ * ⚠️ 这里刻意用 replace 而不是 `SITE_BASE === '/' ? '' : SITE_BASE`：
+ *    后者会被 TS 收窄成字面量类型而报 **ts(2367)「类型无交集」**
+ *    （`const SITE_BASE = '/RickyBlog'` 之后拿它跟 `'/'` 比较）。
+ *    这个坑本项目已经踩过两次（另一次在 CursorBurst 的 glyph 常量），
+ *    记在 .workbuddy/memory/MEMORY.md 里，别再写回比较形式。
+ */
+const SUBPATH = SITE_BASE.replace(/\/+$/, '');
+
+/**
+ * 站点地址 —— 全站唯一的绝对 URL 来源（canonical / sitemap / OG / RSS 都从它推导）。
+ *
+ * 这里刻意**不接受环境变量覆盖**，是踩坑之后改的： *
  *   原设计是「环境变量 SITE_URL > .env > 这里」。2026-09-19 换域名时踩了 ——
- *   Cloudflare 里遗留的 `SITE_URL` 还是旧域名，它把代码里改好的新域名**整个盖掉**，
+ *   Cloudflare 里遗留的 `SITE_URL` 还是旧域名，把代码里改好的新域名**整个盖掉**，
  *   线上 canonical / sitemap 一直指着那个大陆打不开的 workers.dev 地址；
- *   而**本地构建完全正常**（本地没有那个变量），于是很难往「远端变量」上想，白查了很久。
+ *   而**本地构建完全正常**（本地没那个变量），于是很难往「远端变量」上想，白查很久。
  *
- * 教训：个人博客只有一个正式域名，让「看不见的远端变量」能覆盖「看得见的代码」，
- * 收益极小（本来也没有多环境需求），风险很大（静默指错域名，而且现象只在线上出现）。
- * 所以现在 `CANONICAL_SITE` 是**唯一权威**，`SITE_URL` 一律忽略（并会告警提醒去删掉它）。
+ * 教训：个人博客只有一个正式地址，让「看不见的远端变量」能覆盖「看得见的代码」，
+ * 收益极小（本来也没有多环境需求）、风险很大（静默指错，而且现象只在线上出现）。
+ * 所以 `CANONICAL_SITE` 是**唯一权威**，`SITE_URL` 一律忽略（并会告警提醒去删掉它）。
  *
- * 真需要临时用别的域名构建，设 `FORCE_SITE_URL` —— 刻意换了个不常见的新名字，
+ * 真需要临时换地址构建，设 `FORCE_SITE_URL` —— 刻意换了个不常见的新名字，
  * 避免任何历史遗留的 `SITE_URL` 又悄悄生效。
  *
  * 代码里**没有第二处**写死地址：src/lib/seo.ts 的 absoluteUrl / requireSite
  * 拿不到 `Astro.site` 时会直接抛错，不会退回某个兜底域名。
  */
-const CANONICAL_SITE = 'https://blog.infinitest.cloud';
+const CANONICAL_SITE = SITE_ORIGIN + SUBPATH;
 
 /**
- * 备用地址：`https://rickysblog.1174716217.workers.dev` 依然可以访问（Worker 的默认域名），
- * 但**中国大陆直连打不开**（DNS 污染），所以它只作备用，不写进 canonical / sitemap。
+ * 历史备注（本条分支已不用，留着免得以后翻不出去）：
+ *   - `https://rickysblog.1174716217.workers.dev` —— Cloudflare Worker 默认域名，
+ *     **中国大陆直连打不开**（DNS 污染）。
+ *   - `https://blog.infinitest.cloud` —— 后来绑的自有域名，大陆可访问。
+ *   两者都还留在 `main` 分支的配置里；本条 `github-pages` 分支改用 GitHub Pages。
  */
 
 /** 显式覆盖开关。优先级高于 CANONICAL_SITE，但必须主动设这个名字才会生效。 */
@@ -91,29 +120,54 @@ if (process.env.DEBUG_SITE_URL) {
 }
 
 /**
- * 外链自动新窗口打开。
+ * Markdown 正文里的链接与图片：
+ *   1. 站外 http(s) 链接 → 自动新窗口打开（target=_blank + rel）
+ *   2. 站内根路径（'/tags/foo'、'/images/a.jpg'）→ 补上部署子路径
  *
  * 注意这里是 Sätteri 的 HAST 插件，不是 rehype 插件 ——
  * Astro 7 起默认的 Markdown 处理器换成了 Rust 写的 Sätteri，
  * 旧的 remark/rehype 链路需要额外安装 @astrojs/markdown-remark 才能用。
  * 为了一个属性把整条 unified 链路拉回来不划算，所以直接写原生插件。
  *
+ * 为什么"补子路径"这件事必须在 Markdown 管线里也做一遍：
+ *   组件里的链接走 `src/lib/url.ts` 的 `withBase()`，但**正文里手写的** `[x](/tags/foo)`
+ *   绕过了组件 —— 部署到 GitHub Pages 的子路径下时它会 404（这是很容易漏的一处）。
+ *   在这里统一处理，写正文的人就不必关心部署在根域名还是子路径。
+ *
  * 插件签名：{ name, element: { filter: 标签名数组, visit(node, ctx) } }
  * Rust 侧先按标签名过滤，只有匹配的节点才会跨到 JS 侧，所以这个插件几乎不花时间。
  *
  * @type {import('satteri').HastPluginDefinition}
  */
-const externalLinks = {
-  name: 'external-links',
+const linkAndImageAttrs = {
+  name: 'link-and-image-attrs',
   element: {
-    filter: ['a'],
+    filter: ['a', 'img'],
     visit(node, ctx) {
-      const href = node.properties?.['href'];
-      if (typeof href !== 'string') return;
-      // 只处理站外 http(s) 链接；站内相对路径、锚点、mailto 都不动
-      if (!/^https?:\/\//i.test(href)) return;
-      ctx.setProperty(node, 'target', '_blank');
-      ctx.setProperty(node, 'rel', ['noopener', 'noreferrer', 'external']);
+      // <img> 用 src、<a> 用 href，统一成"属性名 + 值"
+      const attr = node.tagName === 'img' ? 'src' : 'href';
+      const value = node.properties?.[attr];
+      if (typeof value !== 'string') return;
+
+      if (node.tagName === 'img') {
+        // 图片只做子路径补全
+        if (SUBPATH && value.startsWith('/') && !value.startsWith('//')) {
+          ctx.setProperty(node, attr, `${SUBPATH}${value}`);
+        }
+        return;
+      }
+
+      // 站外链接：新窗口打开
+      if (/^https?:\/\//i.test(value)) {
+        ctx.setProperty(node, 'target', '_blank');
+        ctx.setProperty(node, 'rel', ['noopener', 'noreferrer', 'external']);
+        return;
+      }
+
+      // 站内根路径：补子路径（锚点 '#x'、mailto、相对路径都不动）
+      if (SUBPATH && value.startsWith('/') && !value.startsWith('//')) {
+        ctx.setProperty(node, attr, `${SUBPATH}${value}`);
+      }
     },
   },
 };
@@ -121,6 +175,9 @@ const externalLinks = {
 // https://astro.build/config
 export default defineConfig({
   site: SITE_URL,
+  // 子路径部署的关键：Astro 用它给 _astro/* 等产物 URL 加前缀。
+  // 根域名部署时它就是 '/'，等价于不设。
+  base: SITE_BASE,
   trailingSlash: 'ignore',
 
   // 悬停时预取目标页面，几乎零成本地让站内跳转「秒开」
@@ -151,7 +208,7 @@ export default defineConfig({
 
   markdown: {
     processor: satteri({
-      hastPlugins: [externalLinks],
+      hastPlugins: [linkAndImageAttrs],
       // features 保持默认：GFM（表格 / 脚注 / 任务列表 / 删除线）、
       // 标题 ID、智能标点都是开箱即用的，不需要额外插件。
     }),

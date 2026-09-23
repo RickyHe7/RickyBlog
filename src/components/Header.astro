@@ -2,19 +2,19 @@
 import { NAV, NAV_MORE, SITE } from '../consts';
 import MapleLeaf from './MapleLeaf.astro';
 import ThemeToggle from './ThemeToggle.astro';
+import { withBase } from '../lib/url';
 
 const path = Astro.url.pathname;
 const isActive = (href: string) =>
   href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
 ---
-
 <header
   class="sticky top-0 z-50 border-b border-paper-200/80 bg-paper-50/85 backdrop-blur-md dark:border-night-700/70 dark:bg-night-900/85"
 >
   <div class="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:px-6">
     <!-- 站点标识 -->
     <a
-      href="/"
+      href={withBase('/')}
       class="group flex items-center gap-2 rounded-lg py-1 pr-2 font-semibold text-bark-900 transition-colors duration-150 hover:text-maple-700 dark:text-night-100 dark:hover:text-maple-300"
     >
       <span
@@ -48,7 +48,7 @@ const isActive = (href: string) =>
     <div class="ml-auto flex items-center gap-1">
       <!-- 搜索：真正的搜索页在 /search，这里只做入口 + 快捷键 -->
       <a
-        href="/search"
+        href={withBase('/search')}
         data-search-trigger
         class="inline-flex h-9 items-center gap-1.5 rounded-full border border-paper-300 bg-white/70 px-2.5 text-bark-500 transition-colors duration-150 hover:border-maple-300 hover:text-maple-700 dark:border-night-600 dark:bg-night-800/70 dark:text-night-400 dark:hover:border-maple-800 dark:hover:text-maple-300"
         aria-label="搜索文章"
@@ -171,6 +171,10 @@ const isActive = (href: string) =>
 </header>
 
 <script>
+  // 这里要用 withBase：本站可能部署在子路径下（GitHub Pages 项目站点），
+  // 硬编码 '/search' 会跳到站外。Astro 会把这段脚本打包，所以可以直接 import。
+  import { withBase } from '../lib/url';
+
   // ⌘K / Ctrl+K 跳到搜索页，顺手聚焦输入框
   document.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
@@ -178,12 +182,12 @@ const isActive = (href: string) =>
       // 别抢走输入框里的正常输入
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
       event.preventDefault();
-      window.location.href = '/search';
+      window.location.href = withBase('/search');
     }
   });
 
   // 从搜索结果页用快捷键进来时自动聚焦
-  if (window.location.pathname.replace(/\/$/, '') === '/search') {
+  if (window.location.pathname.replace(/\/$/, '') === withBase('/search')) {
     const input = document.querySelector<HTMLInputElement>('#search input');
     input?.focus();
   }

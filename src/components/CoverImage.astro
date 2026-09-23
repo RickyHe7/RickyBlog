@@ -1,6 +1,7 @@
 ---
 import { Image } from 'astro:assets';
 import MapleLeaf from './MapleLeaf.astro';
+import { withBase } from '../lib/url';
 
 /**
  * 封面图组件。三种情况自动降级：
@@ -79,9 +80,9 @@ const gradient = GRADIENTS[hash % GRADIENTS.length];
       decoding="async"
       class={`h-full w-full object-cover ${className}`}
     />
-  ) : isPublicPath ? (
+  ) : src?.startsWith('/') ? (
     <img
-      src={src}
+      src={withBase(src)}
       alt={alt}
       width="1200"
       height="630"
