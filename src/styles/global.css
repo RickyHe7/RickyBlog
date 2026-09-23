@@ -286,49 +286,33 @@
 }
 
 /* ============================================================================
-   鼠标跟随特效 —— 逻辑见 src/components/CursorBurst.astro
-   机制照搬那篇博客的「鼠标跟随效果」：在光标处生成一个小图形，向上飘 20px、
-   放大到约 5 倍、旋转 45° 并淡出（0.9s）。三处刻意的差异：
-     1. 字形用枫叶而不是 ♡ —— 粉色爱心配秋叶站太突兀（改组件里的 GLYPH 常量可换回）。
-     2. 不做 e.preventDefault() —— 原文在 mousemove 上阻止默认行为，会连带
-        破坏文字选中与复制（作者自己在文末也提醒了这个坑）。
-     3. 加了最小间距节流与并发上限 —— 原文每次 mousemove 都生成元素，
-        快速甩动会瞬间堆出几百个节点。
+   粒子连线背景 —— 逻辑见 src/components/ParticleField.astro
+   纯背景，**不跟随鼠标**。canvas 尺寸/粒子数/配色都由组件里的 JS 管，
+   这里只负责定位和分层。
+
+   层级：z-0，在天光/落叶之上、大树与正文（z-10）之下 —— 所以不会压到文字。
+   ⚠️ 它和 .leaf-scene / .tree-scene 同为 z-index:0，靠 DOM 顺序决定叠放，
+      顺序在 BaseLayout.astro 里（粒子排在 FallingLeaves 之后、AutumnTree 之前）。
+      不要移到 FallingLeaves 之前：那样会被天光那层 0.4 的遮罩冲淡，
+      而注释里按对比度算好的透明度就全对不上了。
    ========================================================================== */
-.burst-item {
+.particle-field {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
+  z-index: 0;
   pointer-events: none;
-  /* 让图形中心落在指针尖上（叶子 size = 10） */
-  margin: -5px 0 0 -5px;
-  transform-origin: 50% 50%;
-  /* forwards：动画跑完停在透明状态，等定时器来回收 */
-  animation: burst-float 900ms cubic-bezier(0.25, 0.6, 0.3, 1) forwards;
-  will-change: transform, opacity;
+  user-select: none;
 }
 
-/* 前 45% 稳定可见，之后才明显飘散 —— 保持原文的节奏感 */
-@keyframes burst-float {
-  0%,
-  45% {
-    opacity: 0.85;
-    transform: translate3d(0, 0, 0) rotate(var(--burst-rot, 0deg)) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(0, -22px, 0) rotate(calc(var(--burst-rot, 0deg) + 45deg)) scale(4.6);
-  }
+.particle-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-/* 触摸设备没有「跟随」可言，整层省掉；「减少动效」时也一并关掉 */
-@media (pointer: coarse) {
-  .burst-item {
-    display: none;
-  }
-}
+/* 「减少动效」时整层不渲染（和落叶、大树两层的处理一致）；JS 里也会提前 return */
 @media (prefers-reduced-motion: reduce) {
-  .burst-item {
+  .particle-field {
     display: none;
   }
 }

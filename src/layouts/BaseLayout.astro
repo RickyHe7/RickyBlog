@@ -4,10 +4,10 @@ import '../styles/global.css';
 import Analytics from '../components/Analytics.astro';
 import AutumnTree from '../components/AutumnTree.astro';
 import BaseHead from '../components/BaseHead.astro';
-import CursorBurst from '../components/CursorBurst.astro';
 import FallingLeaves from '../components/FallingLeaves.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import ParticleField from '../components/ParticleField.astro';
 import type { JsonLd } from '../lib/seo';
 
 interface Props {
@@ -24,11 +24,11 @@ interface Props {
   leaves?: boolean;
   /** 关掉左下角那棵掉叶子的树（只在大屏显示） */
   tree?: boolean;
-  /** 关掉鼠标跟随特效（只在精确指针设备生效，触摸端本来就自动关闭） */
-  cursor?: boolean;
+  /** 关掉 canvas 粒子连线背景（纯背景，无指针交互） */
+  particles?: boolean;
 }
 
-const { leaves = true, tree = true, cursor = true, ...head } = Astro.props;
+const { leaves = true, tree = true, particles = true, ...head } = Astro.props;
 ---
 
 <!doctype html>
@@ -49,6 +49,12 @@ const { leaves = true, tree = true, cursor = true, ...head } = Astro.props;
 
     {leaves && <FallingLeaves />}
 
+    <!--
+      粒子连线背景。刻意排在 FallingLeaves 之后：天光那层带 0.4 的半透明遮罩，
+      粒子压在它前面才不会被冲淡（注释里按对比度算好的透明度才对得上）。
+    -->
+    {particles && <ParticleField />}
+
     <!-- 左下角的大树：背景层（z-0，内容之下），只在大屏显示 -->
     {tree && <AutumnTree />}
 
@@ -62,12 +68,6 @@ const { leaves = true, tree = true, cursor = true, ...head } = Astro.props;
       </main>
       <Footer />
     </div>
-
-    <!--
-      鼠标跟随特效：元素是 position:fixed 且逐个生成/回收，
-      所以直接挂在 body 上，不需要额外的定位容器。
-    -->
-    {cursor && <CursorBurst />}
 
     <Analytics />
   </body>

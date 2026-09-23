@@ -1,0 +1,247 @@
+---
+/**
+ * Canvas 粒子连线背景 —— 纯背景，**不跟随鼠标**。
+ *
+ * 机制来自 https://www.cnblogs.com/hanxiaochuang666/p/11089904.html 里那个「粒子连线」脚本：
+ * 随机粒子缓慢漂移，距离足够近的两点之间连一条线，线的粗细与透明度按距离衰减。
+ *
+ * 采用时做了这些修正（原文的写法直接搬到现代页面上有实际毛病，不是随手改的）：
+ *   1. **去掉鼠标节点。** 原文把光标本身也当成一个粒子（连接半径 2e4、靠近时反推 0.03），
+ *      所以线会追着光标走。这一层只要背景，不做任何指针交互。
+ *   2. **补 devicePixelRatio。** 原文只用 CSS 像素设 canvas 尺寸，在 2x 屏上整层是模糊的。
+ *   3. **给点补 fillStyle。** 原文只在画线前设了 strokeStyle，画点前没设 fillStyle ——
+ *      点实际用的是 canvas 默认的黑色。这里每个粒子带自己的颜色。
+ *   4. **速度按时间推进（px/秒）**，不是 ±1 px/帧 —— 后者在 144Hz 屏上会比 60Hz 快 2.4 倍。
+ *   5. **粒子数按视口面积算**，不是写死 260：写死的话 4K 屏上稀得看不出、手机上糊成一片。
+ *   6. **切到后台标签页就停掉 rAF**，不空转。
+ *   7. 主题切换时重取颜色 —— 监听 ThemeToggle 已经发出来的 `themechange` 事件，不另造一套。
+ *
+ * 层级：在天光/落叶之上、大树与正文之下（正文是 z-10），所以不会压到内容。
+ * 透明度是按**对比度算过**的（见下面 lineAlphaMax 的注释），不是随手填的。
+ */
+---
+
+<div class="particle-field" aria-hidden="true" data-pagefind-ignore>
+  <canvas class="particle-canvas"></canvas>
+</div>
+
+<script>
+  /** 一套配色 + 两个透明度上限。改这两个数就是调这层的浓淡。 */
+  interface Palette {
+    /** 设计令牌名，绘制前解析成实际色值 */
+    colors: string[];
+    /**
+     * 连线的最大透明度。**这个是按对比度定的，别随手调高。**
+     *
+     * 页面容器是透明的，所以这些线可能正好压在正文链接上。最坏情况是
+     * 「天光最浓处 (rgb(249,231,214)) + 最深的 crimson-400 线正好从 maple-700
+     * 链接字形上穿过」→ 链接对比度 ≈ 4.5:1，刚过 AA。再往上调就会跌破 AA。
+     */
+    lineAlphaMax: number;
+    /** 粒子点的透明度。点是 1~2px 的小圆，压在字形上的面积可忽略，所以可以更实一点。 */
+    dotAlpha: number;
+  }
+
+  const LIGHT: Palette = {
+    colors: ['--color-ginkgo-500', '--color-maple-500', '--color-crimson-400'],
+    lineAlphaMax: 0.13,
+    dotAlpha: 0.3,
+  };
+  const DARK: Palette = {
+    colors: ['--color-ginkgo-400', '--color-maple-300', '--color-crimson-400'],
+    lineAlphaMax: 0.2,
+    dotAlpha: 0.36,
+  };
+
+  /** 令牌取不到时的兜底（正常情况下永远用不上） */
+  const FALLBACK: Record<string, string> = {
+    '--color-ginkgo-500': '#d9a62e',
+    '--color-ginkgo-400': '#e8c05a',
+    '--color-maple-500': '#e2701f',
+    '--color-maple-300': '#f5b07b',
+    '--color-crimson-400': '#d9564a',
+  };
+
+  const LINK_DIST = 104; // 连线距离（CSS px）。原文是平方距离 6e3 ≈ 77.5px，这里拉长一点让网更成形
+  const SPEED_MIN = 7; // px/秒 —— 背景层要慢，原文 ±1px/帧 ≈ 60px/秒太快了
+  const SPEED_MAX = 15;
+  const DPR_MAX = 2; // 3x 屏按 2 倍算就够，再高只是白烧 GPU
+  const AREA_PER_PARTICLE = 22000; // 每个粒子大约占多少平方像素
+  const COUNT_MIN = 22;
+  const COUNT_MAX = 80;
+  const LINE_ALPHA_FLOOR = 0.25; // 一条线最远端的透明度占比（对应原文的 `t + .2` 那个下限）
+
+  interface Particle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    r: number;
+    colorIndex: number;
+  }
+
+  const wrapper = document.querySelector<HTMLElement>('.particle-field');
+  const canvas = wrapper?.querySelector<HTMLCanvasElement>('.particle-canvas');
+  const ctx = canvas?.getContext('2d') ?? null;
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // 「减少动效」时整层不做（CSS 里也 display:none 兜了一层，见 global.css）
+  if (wrapper && canvas && ctx && !reduceMotion) {
+    let width = 0;
+    let height = 0;
+    let particles: Particle[] = [];
+    let active: Palette = LIGHT;
+    /** 已解析成 #rrggbb 的色值；粒子只存索引，所以换主题时下一帧就跟着变 */
+    let colorValues: string[] = [];
+    let frame = 0;
+    let lastTime = 0;
+
+    const isDark = () => document.documentElement.classList.contains('dark');
+
+    const resolveToken = (token: string) =>
+      getComputedStyle(document.documentElement).getPropertyValue(token).trim() ||
+      FALLBACK[token] ||
+      '#e2701f';
+
+    const refreshPalette = () => {
+      active = isDark() ? DARK : LIGHT;
+      colorValues = active.colors.map(resolveToken);
+    };
+
+    const createParticle = (x: number, y: number): Particle => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN);
+
+      return {
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        // 半径和大小错开一点，否则会像一层均匀的网格
+        r: 0.8 + Math.random() * 0.9,
+        colorIndex: Math.floor(Math.random() * colorValues.length),
+      };
+    };
+
+    const resize = () => {
+      const nextWidth = window.innerWidth;
+      const nextHeight = window.innerHeight;
+      // 窗口尺寸变化时按比例挪动已有粒子，而不是重新撒一遍（否则拉窗口会「闪」一下）
+      const scaleX = width ? nextWidth / width : 1;
+      const scaleY = height ? nextHeight / height : 1;
+
+      width = nextWidth;
+      height = nextHeight;
+
+      const dpr = Math.min(window.devicePixelRatio || 1, DPR_MAX);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      // 把绘制单位统一成 CSS px，后面所有坐标都不用再乘 dpr
+      // （注意：改 canvas.width 会重置变换矩阵，所以必须在这之后设）
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      for (const p of particles) {
+        p.x *= scaleX;
+        p.y *= scaleY;
+      }
+
+      const target = Math.max(
+        COUNT_MIN,
+        Math.min(COUNT_MAX, Math.round((width * height) / AREA_PER_PARTICLE))
+      );
+
+      particles = particles.slice(0, target);
+      while (particles.length < target) {
+        particles.push(createParticle(Math.random() * width, Math.random() * height));
+      }
+    };
+
+    const draw = (now: number) => {
+      // 切回标签页时 now 会跳很大一截，钳一下免得粒子瞬移
+      const dt = Math.min(now - lastTime, 50) / 1000;
+      lastTime = now;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const maxDist2 = LINK_DIST * LINK_DIST;
+
+      // 先画线、再画点：点压在线头上，交叉处更干净
+      for (let i = 0; i < particles.length; i += 1) {
+        const a = particles[i];
+
+        a.x += a.vx * dt;
+        a.y += a.vy * dt;
+
+        // 出界就绕到对面。原文是翻转速度方向，那样粒子会在边缘堆一小会儿；
+        // 绕回来分布更均匀，而且边界外留一个 LINK_DIST 的余量，连线不会突然断在边上。
+        if (a.x < -LINK_DIST) a.x = width + LINK_DIST;
+        else if (a.x > width + LINK_DIST) a.x = -LINK_DIST;
+        if (a.y < -LINK_DIST) a.y = height + LINK_DIST;
+        else if (a.y > height + LINK_DIST) a.y = -LINK_DIST;
+
+        ctx.strokeStyle = colorValues[a.colorIndex] ?? colorValues[0];
+
+        for (let j = i + 1; j < particles.length; j += 1) {
+          const b = particles[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const dist2 = dx * dx + dy * dy;
+
+          if (dist2 > maxDist2) continue;
+
+          const t = 1 - dist2 / maxDist2; // 越近越实
+          ctx.globalAlpha =
+            (LINE_ALPHA_FLOOR + (1 - LINE_ALPHA_FLOOR) * t) * active.lineAlphaMax;
+          ctx.lineWidth = 0.4 + 0.5 * t;
+
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+
+      ctx.globalAlpha = active.dotAlpha;
+      for (const p of particles) {
+        ctx.fillStyle = colorValues[p.colorIndex] ?? colorValues[0];
+        ctx.beginPath();
+        // 原文是 fillRect(x-.5, y-.5, 1, 1) 的 1px 方块，在 2x 屏上会糊；小圆点更干净
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      frame = window.requestAnimationFrame(draw);
+    };
+
+    const start = () => {
+      if (frame) return;
+      lastTime = performance.now();
+      frame = window.requestAnimationFrame(draw);
+    };
+
+    const stop = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+    };
+
+    refreshPalette(); // 必须在建粒子之前，createParticle 要用 colorValues.length
+    resize();
+    start();
+
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(resize, 180);
+    });
+
+    // 换主题只换颜色，不用重启循环：色值按索引在每帧取，下一帧就是新配色
+    document.addEventListener('themechange', refreshPalette);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop();
+      else start();
+    });
+  }
+</script>
