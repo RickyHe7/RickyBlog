@@ -45,12 +45,12 @@
   const LIGHT: Palette = {
     colors: ['--color-ginkgo-500', '--color-maple-500', '--color-crimson-400'],
     lineAlphaMax: 0.13,
-    dotAlpha: 0.3,
+    dotAlpha: 0.34,
   };
   const DARK: Palette = {
     colors: ['--color-ginkgo-400', '--color-maple-300', '--color-crimson-400'],
     lineAlphaMax: 0.2,
-    dotAlpha: 0.36,
+    dotAlpha: 0.4,
   };
 
   /** 令牌取不到时的兜底（正常情况下永远用不上） */
@@ -66,9 +66,22 @@
   const SPEED_MIN = 7; // px/秒 —— 背景层要慢，原文 ±1px/帧 ≈ 60px/秒太快了
   const SPEED_MAX = 15;
   const DPR_MAX = 2; // 3x 屏按 2 倍算就够，再高只是白烧 GPU
-  const AREA_PER_PARTICLE = 22000; // 每个粒子大约占多少平方像素
-  const COUNT_MIN = 22;
-  const COUNT_MAX = 80;
+
+  /**
+   * ⭐ 密度是**让这层看得见的主要手段，而且它不花对比度**。
+   *
+   * 每条线单独看仍然是 lineAlphaMax 那个上限，粒子多只是让线多几条 ——
+   * 所以想让效果更明显，应该往这里调，而不是往上调 lineAlphaMax。
+   *
+   * 这个值是被"看"出来的：按 22000 试过，1600×900 只有 65 个粒子，
+   * 240×150 的范围内期望只有 1.6 个点，实际观感接近**一张空白纸**，
+   * 根本读不出"连线"。用 Pillow 把粒子场按真实参数渲染成图对比后，定在 6500：
+   * 1600×900 → 222 个（每颗粒子约 5 个邻点，网织得起来），390×844 手机 → 51 个。
+   */
+  const AREA_PER_PARTICLE = 6500; // 每个粒子大约占多少平方像素（越小越密）
+  const COUNT_MIN = 40;
+  const COUNT_MAX = 260; // 上限：260 时每帧约 3.4 万次配对比较，仍然很轻。
+  // 大型桌面窗口（如 1920×1080）会撞到上限，此时要靠下调 LINK_DIST 减负（连线数随它平方变化）
   const LINE_ALPHA_FLOOR = 0.25; // 一条线最远端的透明度占比（对应原文的 `t + .2` 那个下限）
 
   interface Particle {
