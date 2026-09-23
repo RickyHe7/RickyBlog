@@ -2,8 +2,9 @@
 import '../styles/global.css';
 
 import Analytics from '../components/Analytics.astro';
+import AutumnTree from '../components/AutumnTree.astro';
 import BaseHead from '../components/BaseHead.astro';
-import CursorTrail from '../components/CursorTrail.astro';
+import CursorBurst from '../components/CursorBurst.astro';
 import FallingLeaves from '../components/FallingLeaves.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
@@ -21,11 +22,13 @@ interface Props {
   jsonLd?: JsonLd[];
   /** 关掉背景落叶（例如 404 页更有意境的克制感） */
   leaves?: boolean;
-  /** 关掉鼠标跟随折线（只在精确指针设备生效，触摸端本来就自动关闭） */
-  trail?: boolean;
+  /** 关掉左下角那棵掉叶子的树（只在大屏显示） */
+  tree?: boolean;
+  /** 关掉鼠标跟随特效（只在精确指针设备生效，触摸端本来就自动关闭） */
+  cursor?: boolean;
 }
 
-const { leaves = true, trail = true, ...head } = Astro.props;
+const { leaves = true, tree = true, cursor = true, ...head } = Astro.props;
 ---
 
 <!doctype html>
@@ -46,8 +49,11 @@ const { leaves = true, trail = true, ...head } = Astro.props;
 
     {leaves && <FallingLeaves />}
 
+    <!-- 左下角的大树：背景层（z-0，内容之下），只在大屏显示 -->
+    {tree && <AutumnTree />}
+
     <!--
-      z-10 让内容盖在落叶层之上；落叶层是 pointer-events:none，所以不会挡交互。
+      z-10 让内容盖在背景层之上；背景层都是 pointer-events:none，所以不会挡交互。
     -->
     <div class="relative z-10 flex min-h-screen flex-col">
       <Header />
@@ -58,11 +64,10 @@ const { leaves = true, trail = true, ...head } = Astro.props;
     </div>
 
     <!--
-      折线层在内容之上、吸顶导航之下（global.css 里 z-30），
-      同样 pointer-events:none，所以不影响点击与文字选中。
-      放在内容之后是为了让它压在文字上 —— 否则遇到有底色的卡片会整条消失。
+      鼠标跟随特效：元素是 position:fixed 且逐个生成/回收，
+      所以直接挂在 body 上，不需要额外的定位容器。
     -->
-    {trail && <CursorTrail />}
+    {cursor && <CursorBurst />}
 
     <Analytics />
   </body>

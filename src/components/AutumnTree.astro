@@ -1,0 +1,243 @@
+---
+import MapleLeaf, { LEAF_PATH } from './MapleLeaf.astro';
+
+/**
+ * 秋日大树 —— 固定在左下角，树冠持续掉叶。
+ *
+ * 树不是手写的死路径，而是**构建时算出来的**：树干递归分叉，每一级长度与粗细按比例
+ * 衰减，末梢挂叶片。这么做有三个好处 ——
+ *   1. 比手写一条大 path 更容易调（改衰减系数就能整棵树变高变密）；
+ *   2. 叶片的坐标是**算出来的**，所以「哪几片会掉下来」能精确对齐树冠位置；
+ *   3. 用固定种子的伪随机，每次构建长得一模一样，diff 里不会出现形状噪音。
+ *
+ * viewBox 是**反向算出来的**：先生成枝条，再算所有枝条与叶片的包围盒，直接用这个
+ * 包围盒当视口。所以不管随机结果多奔放都不会被裁掉；容器的 aspect-ratio 也跟着
+ * 这个包围盒走，树正好铺满容器、没有空白（详见下面 viewBox 推导处的注释）。
+ *
+ * 层级：fixed + z-index 0，在内容之下（内容 z-10），所以不会压到正文；
+ * 右侧用 mask 渐隐（见 global.css）。只在大屏显示 —— 窄屏左侧没有留白，树会糊在正文上。
+ *
+ * 叶形复用 `MapleLeaf` 导出的 LEAF_PATH，不重复定义（保持形状唯一来源）。
+ */
+
+/** 稳定伪随机（mulberry32）。换种子就换一棵树，但同一份代码永远是同一棵。 */
+const rand = (() => {
+  let s = 20260923 >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+})();
+
+/** 容器的宽度（rem）。高度让容器按内容的真实比例自适应，见下面 viewBox 的推导 */
+const CONTAINER_REM = 30;
+
+interface Branch {
+  d: string;
+  width: number;
+  /** 端点，用来算包围盒 */
+  x: number;
+  y: number;
+}
+
+interface CanopyLeaf {
+  x: number;
+  y: number;
+  size: number;
+  rotate: number;
+  color: string;
+  opacity: number;
+}
+
+const branches: Branch[] = [];
+const canopy: CanopyLeaf[] = [];
+
+/** 这些颜色在亮/暗两种底色上都读得出来；不要用 maple-600 这类偏暗的 */
+const LEAF_COLORS = [
+  '--color-maple-300',
+  '--color-maple-400',
+  '--color-maple-500',
+  '--color-ginkgo-400',
+  '--color-crimson-400',
+];
+
+const round = (n: number, digits = 1) => Number(n.toFixed(digits));
+
+/**
+ * 递归长枝条。
+ * @param angle 角度制，-90 表示正上方（SVG 的 y 轴向下）
+ */
+const grow = (x: number, y: number, angle: number, len: number, width: number, depth: number) => {
+  const rad = (angle * Math.PI) / 180;
+  const ex = x + Math.cos(rad) * len;
+  const ey = y + Math.sin(rad) * len;
+
+  // 控制点稍微偏离两点连线，枝条才不是一根直棍
+  const bend = (rand() - 0.5) * 0.4;
+  const cx = x + Math.cos(rad + bend) * len * 0.55;
+  const cy = y + Math.sin(rad + bend) * len * 0.55;
+
+  branches.push({
+    d: `M${round(x)} ${round(y)}Q${round(cx)} ${round(cy)} ${round(ex)} ${round(ey)}`,
+    width: round(width, 2),
+    x: ex,
+    y: ey,
+  });
+
+  // 末梢：挂 1–2 片叶子，然后停
+  if (depth >= 4) {
+    const count = rand() < 0.45 ? 2 : 1;
+    for (let i = 0; i < count; i += 1) {
+      canopy.push({
+        x: round(ex + (rand() - 0.5) * 20),
+        y: round(ey + (rand() - 0.5) * 20),
+        size: round(8 + rand() * 6),
+        rotate: Math.round((rand() - 0.5) * 120),
+        color: LEAF_COLORS[Math.floor(rand() * LEAF_COLORS.length)],
+        opacity: round(0.5 + rand() * 0.45, 2),
+      });
+    }
+    return;
+  }
+
+  const count = depth === 0 ? 3 : rand() < 0.4 ? 3 : 2;
+  for (let i = 0; i < count; i += 1) {
+    const spread = 24 + rand() * 18;
+    const offset = (i - (count - 1) / 2) * spread + (rand() - 0.5) * 14;
+    grow(ex, ey, angle + offset, len * (0.62 + rand() * 0.14), width * 0.66, depth + 1);
+  }
+};
+
+// 树干从 (150, 486) 起向上长。坐标是「原始坐标」，
+// 最终会被下面的 viewBox 归一化，所以数值本身不用太讲究。
+grow(150, 486, -90, 128, 16, 0);
+
+/* ---------------------------------------------------------------- viewBox 反推 */
+// 把所有枝条端点与叶片外框都算进包围盒，直接用这个包围盒当视口。
+//
+// ⚠️ 这里**不把包围盒强行扩成固定比例**。之前扩成 2:3 的后果是：树的内容只占容器
+// 底部约 45%，上方塞满空白 —— 容器被白撑高了一倍，树看起来也小了一圈。
+// 改成真实比例 + 容器用 aspect-ratio 跟随，树就正好铺满容器，没有死空间。
+const pad = 6;
+let minX = Number.POSITIVE_INFINITY;
+let minY = Number.POSITIVE_INFINITY;
+let maxX = Number.NEGATIVE_INFINITY;
+let maxY = Number.NEGATIVE_INFINITY;
+
+const include = (x: number, y: number) => {
+  minX = Math.min(minX, x);
+  minY = Math.min(minY, y);
+  maxX = Math.max(maxX, x);
+  maxY = Math.max(maxY, y);
+};
+
+for (const branch of branches) include(branch.x, branch.y);
+for (const leaf of canopy) {
+  const half = leaf.size / 2;
+  include(leaf.x - half, leaf.y - half);
+  include(leaf.x + half, leaf.y + half);
+}
+
+const viewX = round(minX - pad);
+const viewY = round(minY - pad);
+const viewW = round(maxX - minX + pad * 2);
+const viewH = round(maxY - minY + pad * 2);
+
+/** 容器高度（rem）：按内容的真实比例从宽度推出来，供 aspect-ratio 与落叶下落的距离用 */
+const containerRem = round((CONTAINER_REM * viewH) / viewW, 2);
+
+/** 原始坐标 → 百分比（相对 viewBox 视口），供掉落的叶子定位用 */
+const toPercentX = (x: number) => round(((x - viewX) / viewW) * 100, 2);
+const toPercentY = (y: number) => round(((y - viewY) / viewH) * 100, 2);
+
+/* ------------------------------------------------------------ 会掉落的那几片 */
+const fallingLeaves = (() => {
+  const STEP = Math.max(1, Math.floor(canopy.length / 8));
+  const picked: CanopyLeaf[] = [];
+
+  for (let i = 0; i < canopy.length && picked.length < 8; i += STEP) {
+    const leaf = canopy[i];
+    picked.push({
+      ...leaf,
+      // 稍微挪开一点，免得掉落的叶子正好压在静态叶片上、看起来像没动
+      x: round(leaf.x + (rand() - 0.5) * 30),
+      y: round(leaf.y + (rand() - 0.5) * 12),
+      size: round(leaf.size + 2),
+      opacity: round(Math.min(0.85, leaf.opacity + 0.2), 2),
+    });
+  }
+
+  return picked.map((leaf, i) => ({
+    leaf,
+    duration: 10 + ((i * 7) % 6), // 10–15s，有的慢有的快
+    delay: round(i * 1.7), // 错开出发，「一直在掉」而不是齐刷刷
+    drift: (i % 2 === 0 ? 1 : -1) * (3 + (i % 4)),
+    spin: 300 + (i % 5) * 60,
+    sway: round(4 + (i % 4) * 1.2),
+  }));
+})();
+
+/** 把叶片中心放到 (x, y)：平移到点 → 旋转 → 缩放 → 把 24×24 的中心移回原点 */
+const leafTransform = (leaf: CanopyLeaf) =>
+  `translate(${leaf.x} ${leaf.y}) rotate(${leaf.rotate}) scale(${round(leaf.size / 24, 3)}) translate(-12 -12)`;
+---
+
+<div
+  class="tree-scene"
+  aria-hidden="true"
+  data-pagefind-ignore
+  style={`aspect-ratio: ${viewW} / ${viewH};--tree-height:${containerRem}rem`}
+>
+  <svg
+    class="tree-svg"
+    viewBox={`${viewX} ${viewY} ${viewW} ${viewH}`}
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+  >
+    <g stroke="currentColor" stroke-linecap="round">
+      {branches.map((branch) => <path d={branch.d} stroke-width={branch.width}></path>)}
+    </g>
+    <g>
+      {
+        canopy.map((leaf) => (
+          <path
+            d={LEAF_PATH}
+            transform={leafTransform(leaf)}
+            style={`fill: var(${leaf.color})`}
+            opacity={leaf.opacity}
+          />
+        ))
+      }
+    </g>
+  </svg>
+
+  <!--
+    会掉落的那几片。位置用百分比，落在上面 viewBox 的坐标系里，
+    所以能和静态叶片精确对齐（容器的 aspect-ratio 由组件内联给出，两边一致）。
+    运动复用背景落叶那套：外层 .tree-leaf 下落，内层 .leaf-sway 横摆/翻转。
+  -->
+  {
+    fallingLeaves.map(({ leaf, duration, delay, drift, spin, sway }) => (
+      <div
+        class="tree-leaf"
+        style={[
+          `--leaf-x:${toPercentX(leaf.x)}%`,
+          `--leaf-y:${toPercentY(leaf.y)}%`,
+          `--leaf-duration:${duration}s`,
+          `--leaf-delay:${delay}s`,
+          `--leaf-drift-x:${drift}vw`,
+          `--leaf-spin:${spin}deg`,
+          `--leaf-sway-duration:${sway}s`,
+          `--leaf-opacity:${leaf.opacity}`,
+        ].join(';')}
+      >
+        <div class="leaf-sway">
+          <MapleLeaf class="leaf" size={leaf.size} style={`color: var(${leaf.color})`} />
+        </div>
+      </div>
+    ))
+  }
+</div>

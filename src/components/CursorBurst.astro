@@ -1,0 +1,126 @@
+---
+import MapleLeaf from './MapleLeaf.astro';
+
+/**
+ * 鼠标跟随特效。
+ *
+ * 机制照搬 https://www.cnblogs.com/hanxiaochuang666/p/11089904.html 里的「鼠标跟随效果」：
+ * 光标移动时在该点生成一个小图形，向上飘 20px、放大到约 5 倍、旋转 45° 并淡出（0.9s）。
+ *
+ * 三处刻意的差异（都是有意为之，不是没照着做）：
+ *   1. **字形用枫叶而不是 ♡**：粉色爱心放到秋叶站里太突兀。想换成原文那样，
+ *      传 `glyph="heart"` 即可（那一支就是原文的字形与颜色）。
+ *   2. **不做 `e.preventDefault()`**：原文把阻止默认行为绑在 mousemove 上，
+ *      会连带破坏文字选中与复制 —— 那篇作者在文末自己也提醒了这个坑。
+ *   3. **加了最小间距节流 + 并发上限**：原文每次 mousemove 都塞一个 DOM 元素，
+ *      快速甩动会瞬间堆出几百个节点。
+ *
+ * 另外只在精确指针 + 非减少动效时启用；触摸端没有「跟随」可言（CSS 里也兜了一层）。
+ * 字形复用 `MapleLeaf`，不把叶子路径再抄一份到 JS 里。
+ */
+
+interface Props {
+  /**
+   * 字形：`'leaf'` = 枫叶（默认，贴合站点主题）；`'heart'` = 原教程的 ♡ + 粉色。
+   *
+   * 为什么是 prop 而不是组件内的常量：`const GLYPH = 'leaf'` 会被 TS 收窄成字面量类型，
+   * 于是 `GLYPH === 'heart'` 这种比较会被判成「类型没有交集」而报 ts(2367)，
+   * 显式标注联合类型也拦不住（const + 字面量初始化一定被收窄）。
+   * 走 prop 默认值就带了运行期不确定性，类型检查自然通过。
+   *
+   * 想换成原文的爱心：在 BaseLayout 里写 `<CursorBurst glyph="heart" />` 即可。
+   */
+  glyph?: 'leaf' | 'heart';
+}
+
+const { glyph = 'leaf' } = Astro.props;
+---
+
+{
+  glyph === 'heart' ? (
+    <template data-burst-template>
+      <span style="font-size:10px;line-height:1;color:#FF83FA">♡</span>
+    </template>
+  ) : (
+    <template data-burst-template>
+      <MapleLeaf size={10} />
+    </template>
+  )
+}
+
+<script>
+  const template = document.querySelector<HTMLTemplateElement>('[data-burst-template]');
+  const shape = template?.content.firstElementChild;
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = window.matchMedia('(pointer: fine)').matches;
+
+  if (shape && !reduceMotion && finePointer) {
+    /** 亮色底用偏深的秋色，暗色底用更亮的，保证两种主题下都看得见 */
+    const LIGHT = [
+      '--color-maple-500',
+      '--color-maple-600',
+      '--color-ginkgo-500',
+      '--color-crimson-500',
+    ];
+    const DARK = [
+      '--color-maple-300',
+      '--color-maple-400',
+      '--color-ginkgo-400',
+      '--color-crimson-400',
+    ];
+
+    const MIN_STEP = 16; // 光标移动超过这么多像素才生成一个
+    const MAX_ALIVE = 28; // 同时在场的上限，防止刷屏
+    const LIFE = 900; // 与 CSS 的 burst-float 时长一致
+
+    let lastX = Number.NaN;
+    let lastY = Number.NaN;
+    let alive = 0;
+
+    const spawn = (x: number, y: number) => {
+      if (alive >= MAX_ALIVE) return;
+
+      const node = shape.cloneNode(true) as HTMLElement;
+      const palette = document.documentElement.classList.contains('dark') ? DARK : LIGHT;
+
+      node.classList.add('burst-item');
+      // 用 padding 而不是 background 定位？不 —— 直接设 left/top，
+      // 这两个元素是 fixed 定位且马上会被移除，代价可以忽略
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+
+      // 叶子才有颜色；♡ 那一支自带行内色，别覆盖它
+      if (node instanceof SVGElement) {
+        node.style.color = `var(${palette[Math.floor(Math.random() * palette.length)]})`;
+      }
+      // 每片给个随机基础角度，不然全都朝同一个方向很呆
+      node.style.setProperty('--burst-rot', `${((Math.random() - 0.5) * 50).toFixed(1)}deg`);
+
+      document.body.append(node);
+      alive += 1;
+
+      window.setTimeout(() => {
+        node.remove();
+        alive -= 1;
+      }, LIFE);
+    };
+
+    window.addEventListener(
+      'pointermove',
+      (event: PointerEvent) => {
+        // 只认鼠标：触摸端没有「跟随」，笔也不太需要
+        if (event.pointerType !== 'mouse') return;
+
+        const { clientX: x, clientY: y } = event;
+        // 第一次移动立即生成；之后按最小间距节流
+        if (Number.isFinite(lastX) && Math.hypot(x - lastX, y - lastY) < MIN_STEP) return;
+
+        lastX = x;
+        lastY = y;
+        spawn(x, y);
+      },
+      { passive: true }
+    );
+  }
+</script>

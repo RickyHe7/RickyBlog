@@ -12,7 +12,7 @@ import MapleLeaf from './MapleLeaf.astro';
  *
  * 设计约束（都是刻意的）：
  *   - 纯 CSS 动画，零 JS、零图片请求，不参与首屏渲染计算；
- *   - 12 片叶子（窄屏 5 片），opacity 0.14–0.32，绝不影响正文可读性；
+ *   - 20 片叶子（窄屏 7 片），opacity 0.13–0.32，绝不影响正文可读性；
  *   - position: fixed + pointer-events: none，不遮挡点击、不产生滚动条；
  *   - prefers-reduced-motion 下整层隐藏（见 global.css）。
  *
@@ -43,21 +43,29 @@ interface Leaf {
 const LEAVES: Leaf[] = [
   // ---------------------------------------------------------------- 远景：小、淡、微糊、慢，负责纵深
   { x: '8%', size: 14, depth: 'far', color: '--color-ginkgo-300', duration: 46, delay: 0, drift: 5, spin: 260, sway: 8, opacity: 0.16 },
+  { x: '20%', size: 12, depth: 'far', color: '--color-maple-400', duration: 54, delay: 23, drift: -4, spin: -200, sway: 9.5, opacity: 0.13 },
   { x: '31%', size: 12, depth: 'far', color: '--color-maple-400', duration: 52, delay: 11, drift: -4, spin: -220, sway: 9, opacity: 0.14 },
+  { x: '48%', size: 15, depth: 'far', color: '--color-crimson-400', duration: 47, delay: 29, drift: 5, spin: 240, sway: 8, opacity: 0.15 },
   { x: '62%', size: 15, depth: 'far', color: '--color-crimson-400', duration: 44, delay: 5, drift: 6, spin: 300, sway: 7.5, opacity: 0.15 },
+  { x: '76%', size: 13, depth: 'far', color: '--color-ginkgo-300', duration: 51, delay: 33, drift: -6, spin: -240, sway: 9, opacity: 0.13 },
   { x: '89%', size: 13, depth: 'far', color: '--color-ginkgo-400', duration: 49, delay: 17, drift: -5, spin: -260, sway: 8.5, opacity: 0.14 },
 
   // ------------------------------------------------------------------ 中景：主体层
+  { x: '5%', size: 18, depth: 'mid', color: '--color-ginkgo-400', duration: 32, delay: 26, drift: 6, spin: 340, sway: 7, opacity: 0.22 },
   { x: '16%', size: 19, depth: 'mid', color: '--color-maple-500', duration: 30, delay: 3, drift: 7, spin: 360, sway: 6, opacity: 0.24 },
+  { x: '33%', size: 20, depth: 'mid', color: '--color-maple-600', duration: 35, delay: 18, drift: -7, spin: -360, sway: 7, opacity: 0.2 },
   { x: '42%', size: 21, depth: 'mid', color: '--color-ginkgo-400', duration: 33, delay: 13, drift: -6, spin: -320, sway: 6.5, opacity: 0.22 },
   { x: '55%', size: 17, depth: 'mid', color: '--color-ginkgo-300', duration: 26, delay: 20, drift: 6, spin: 340, sway: 6, opacity: 0.22 },
   { x: '70%', size: 18, depth: 'mid', color: '--color-crimson-500', duration: 28, delay: 7, drift: 8, spin: 300, sway: 5.5, opacity: 0.25 },
+  { x: '85%', size: 19, depth: 'mid', color: '--color-maple-500', duration: 31, delay: 24, drift: -8, spin: -340, sway: 6.5, opacity: 0.23 },
   { x: '94%', size: 20, depth: 'mid', color: '--color-maple-600', duration: 34, delay: 1, drift: -7, spin: -400, sway: 7, opacity: 0.2 },
 
   // ------------------------------------------------------- 近景：大、浓、清晰、快，负责「扑面」的感觉
+  { x: '12%', size: 25, depth: 'near', color: '--color-crimson-400', duration: 25, delay: 30, drift: 9, spin: -420, sway: 5, opacity: 0.26 },
   { x: '26%', size: 27, depth: 'near', color: '--color-maple-500', duration: 21, delay: 9, drift: -9, spin: 420, sway: 4.5, opacity: 0.3 },
   { x: '58%', size: 30, depth: 'near', color: '--color-crimson-400', duration: 18, delay: 2, drift: 10, spin: -480, sway: 4, opacity: 0.28 },
   { x: '81%', size: 24, depth: 'near', color: '--color-maple-400', duration: 23, delay: 15, drift: -8, spin: 380, sway: 5, opacity: 0.32 },
+  { x: '92%', size: 26, depth: 'near', color: '--color-ginkgo-400', duration: 20, delay: 27, drift: 9, spin: 460, sway: 4.6, opacity: 0.27 },
 ];
 ---
 
