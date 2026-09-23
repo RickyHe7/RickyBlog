@@ -20,3 +20,6 @@ public/pagefind/
 .DS_Store
 Thumbs.db
 *.log
+
+# 冒烟测试从 dist 里抽出来的临时脚本
+scripts/.particle-field.extracted.mjs

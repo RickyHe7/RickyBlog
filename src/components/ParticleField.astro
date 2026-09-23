@@ -1,13 +1,20 @@
 ---
 /**
- * Canvas 粒子连线背景 —— 纯背景，**不跟随鼠标**。
+ * Canvas 粒子连线背景 —— 粒子织成一张网，**光标本身也是网上的一个节点**。
  *
  * 机制来自 https://www.cnblogs.com/hanxiaochuang666/p/11089904.html 里那个「粒子连线」脚本：
- * 随机粒子缓慢漂移，距离足够近的两点之间连一条线，线的粗细与透明度按距离衰减。
+ * 随机粒子缓慢漂移，距离足够近的两点之间连一条线，线的粗细与透明度按距离衰减；
+ * 光标附近（`CURSOR_DIST` 内）的粒子会和光标连线，更近的那圈（`CURSOR_PUSH_DIST` 内）
+ * 会被轻轻推开 —— 这才是这层的看点。
  *
  * 采用时做了这些修正（原文的写法直接搬到现代页面上有实际毛病，不是随手改的）：
- *   1. **去掉鼠标节点。** 原文把光标本身也当成一个粒子（连接半径 2e4、靠近时反推 0.03），
- *      所以线会追着光标走。这一层只要背景，不做任何指针交互。
+ *   1. **鼠标节点保留，但逻辑重写了。** 原文把光标塞进粒子数组一起跑 O(n²)，而且「推开」
+ *      只在 **100~141px 的那一圈**生效 —— 它判断的是 `l >= n.max / 2`，所以比 100px 更近的
+ *      粒子反倒不会被推。那是段 bug 式的逻辑（原作者大概没细看），这里改成
+ *      从光标中心向外平滑衰减地推开，并且**按 dt 归一**（原文每帧固定位移，
+ *      144Hz 屏上推得比 60Hz 快 2.4 倍）。
+ *      另外**推开半径与连线半径分开**（72 / 141）：两者取同一个值会产生一个反直觉的后果 ——
+ *      光标停住一两秒就把周围清空，于是「光标连线」自己也消失了。
  *   2. **补 devicePixelRatio。** 原文只用 CSS 像素设 canvas 尺寸，在 2x 屏上整层是模糊的。
  *   3. **给点补 fillStyle。** 原文只在画线前设了 strokeStyle，画点前没设 fillStyle ——
  *      点实际用的是 canvas 默认的黑色。这里每个粒子带自己的颜色。
@@ -84,6 +91,22 @@
   // 大型桌面窗口（如 1920×1080）会撞到上限，此时要靠下调 LINK_DIST 减负（连线数随它平方变化）
   const LINE_ALPHA_FLOOR = 0.25; // 一条线最远端的透明度占比（对应原文的 `t + .2` 那个下限）
 
+  // —— 光标节点 ——
+  /** 光标能连到多远的粒子。原文是平方距离 2e4（= 141px），保持一致 */
+  const CURSOR_DIST = 141;
+  /**
+   * 推开粒子的半径，**故意比 `CURSOR_DIST` 小**。
+   *
+   * 两个半径相同会踩一个坑（实测过）：光标停住 1.5 秒，141px 内就被清空，
+   * 于是**「光标连线」自己也归零了** —— 最想看的那个效果反而消失。
+   * 只推内圈、留住 72~141px 那一圈，才是「近处被拨开 + 往外牵出几根线」的样子；
+   * 而且这样推开范围会自平衡：内圈推力大、越靠边越小，最终稳定在推力 = 粒子自身漂移
+   * 的那个半径上（约 50px），不会一直扩大。
+   */
+  const CURSOR_PUSH_DIST = 72;
+  /** 推开粒子的最大速度（px/秒，越靠近光标越接近这个值）。按 dt 归一，不是每帧固定位移 */
+  const CURSOR_PUSH = 40;
+
   interface Particle {
     x: number;
     y: number;
@@ -109,6 +132,9 @@
     let colorValues: string[] = [];
     let frame = 0;
     let lastTime = 0;
+    /** 光标位置（CSS px，视口坐标）。NaN = 页面上当前没有指针 */
+    let cursorX = Number.NaN;
+    let cursorY = Number.NaN;
 
     const isDark = () => document.documentElement.classList.contains('dark');
 
@@ -170,6 +196,10 @@
       }
     };
 
+    /** 距离占比 t（0~1，越近越大）→ 这条线的透明度。两种线共用，保证上限一致。 */
+    const lineAlpha = (t: number) =>
+      (LINE_ALPHA_FLOOR + (1 - LINE_ALPHA_FLOOR) * t) * active.lineAlphaMax;
+
     const draw = (now: number) => {
       // 切回标签页时 now 会跳很大一截，钳一下免得粒子瞬移
       const dt = Math.min(now - lastTime, 50) / 1000;
@@ -178,21 +208,40 @@
       ctx.clearRect(0, 0, width, height);
 
       const maxDist2 = LINK_DIST * LINK_DIST;
+      const hasCursor = Number.isFinite(cursorX) && Number.isFinite(cursorY);
+      const cursorDist2 = CURSOR_DIST * CURSOR_DIST;
+      const pushDist2 = CURSOR_PUSH_DIST * CURSOR_PUSH_DIST;
 
-      // 先画线、再画点：点压在线头上，交叉处更干净
-      for (let i = 0; i < particles.length; i += 1) {
-        const a = particles[i];
+      // ① 移动 + 绕回；光标在时顺手把附近的粒子往外推一点
+      for (const p of particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
 
-        a.x += a.vx * dt;
-        a.y += a.vy * dt;
+        if (hasCursor) {
+          const dx = p.x - cursorX;
+          const dy = p.y - cursorY;
+          const d2 = dx * dx + dy * dy;
+
+          // d2 的下限是防除零；推的力度从光标中心向外平滑衰减到 0
+          if (d2 < pushDist2 && d2 > 0.01) {
+            const d = Math.sqrt(d2);
+            const step = (1 - d / CURSOR_PUSH_DIST) * CURSOR_PUSH * dt;
+            p.x += (dx / d) * step;
+            p.y += (dy / d) * step;
+          }
+        }
 
         // 出界就绕到对面。原文是翻转速度方向，那样粒子会在边缘堆一小会儿；
         // 绕回来分布更均匀，而且边界外留一个 LINK_DIST 的余量，连线不会突然断在边上。
-        if (a.x < -LINK_DIST) a.x = width + LINK_DIST;
-        else if (a.x > width + LINK_DIST) a.x = -LINK_DIST;
-        if (a.y < -LINK_DIST) a.y = height + LINK_DIST;
-        else if (a.y > height + LINK_DIST) a.y = -LINK_DIST;
+        if (p.x < -LINK_DIST) p.x = width + LINK_DIST;
+        else if (p.x > width + LINK_DIST) p.x = -LINK_DIST;
+        if (p.y < -LINK_DIST) p.y = height + LINK_DIST;
+        else if (p.y > height + LINK_DIST) p.y = -LINK_DIST;
+      }
 
+      // ② 粒子之间的连线
+      for (let i = 0; i < particles.length; i += 1) {
+        const a = particles[i];
         ctx.strokeStyle = colorValues[a.colorIndex] ?? colorValues[0];
 
         for (let j = i + 1; j < particles.length; j += 1) {
@@ -204,8 +253,7 @@
           if (dist2 > maxDist2) continue;
 
           const t = 1 - dist2 / maxDist2; // 越近越实
-          ctx.globalAlpha =
-            (LINE_ALPHA_FLOOR + (1 - LINE_ALPHA_FLOOR) * t) * active.lineAlphaMax;
+          ctx.globalAlpha = lineAlpha(t);
           ctx.lineWidth = 0.4 + 0.5 * t;
 
           ctx.beginPath();
@@ -215,6 +263,28 @@
         }
       }
 
+      // ③ 光标 → 粒子的连线。这就是「鼠标移动有反应」的那部分
+      if (hasCursor) {
+        ctx.strokeStyle = colorValues[1] ?? colorValues[0]; // 固定用主色，读起来像"光标那一条"
+        for (const p of particles) {
+          const dx = cursorX - p.x;
+          const dy = cursorY - p.y;
+          const dist2 = dx * dx + dy * dy;
+
+          if (dist2 > cursorDist2) continue;
+
+          const t = 1 - dist2 / cursorDist2;
+          ctx.globalAlpha = lineAlpha(t);
+          ctx.lineWidth = 0.4 + 0.5 * t;
+
+          ctx.beginPath();
+          ctx.moveTo(cursorX, cursorY);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+        }
+      }
+
+      // ④ 点最后画，压在线头上，交叉处更干净
       ctx.globalAlpha = active.dotAlpha;
       for (const p of particles) {
         ctx.fillStyle = colorValues[p.colorIndex] ?? colorValues[0];
@@ -252,9 +322,34 @@
     // 换主题只换颜色，不用重启循环：色值按索引在每帧取，下一帧就是新配色
     document.addEventListener('themechange', refreshPalette);
 
+    // —— 光标节点 ——
+    // 只在鼠标 / 触控笔上生效：触摸端没有 hover，「跟随」没有意义
+    const trackCursor = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
+      cursorX = event.clientX;
+      cursorY = event.clientY;
+    };
+
+    // 指针离开窗口时把光标节点收掉，否则会在边缘留下一坨连线
+    const clearCursor = () => {
+      cursorX = Number.NaN;
+      cursorY = Number.NaN;
+    };
+
+    window.addEventListener('pointermove', trackCursor, { passive: true });
+    document.addEventListener('pointerout', (event) => {
+      // relatedTarget 为 null = 指针离开了文档（而不是在元素之间移动）
+      if (!event.relatedTarget) clearCursor();
+    });
+    window.addEventListener('blur', clearCursor);
+
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) stop();
-      else start();
+      if (document.hidden) {
+        clearCursor(); // 切走时一起收掉，回来不会还留着线条
+        stop();
+      } else {
+        start();
+      }
     });
   }
 </script>
