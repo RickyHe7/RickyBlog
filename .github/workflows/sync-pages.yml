@@ -1,24 +1,35 @@
 # 把 main 自动同步到 github-pages，并触发 Pages 部署
 #
 # 目的：**你只需要推 `main`**。
-#   main 推送 → 本工作流把 main 合并进 github-pages → 直接调用 deploy-pages.yml 发布。
+#   main 推送 → 本工作流把 main 同步进 github-pages → 直接调用 deploy-pages.yml 发布。
 #   （Cloudflare 那边由它自己的 Git 集成监听 main，与本工作流无关、互不影响。）
 #
-# 为什么是「合并」而不是「cherry-pick 或整树覆盖」：
-#   两条分支的差异被刻意压到只剩 `astro.config.mjs` 里的两个常量
-#   （SITE_ORIGIN / SITE_BASE），所以正常的内容与功能改动都能干净合并过来。
+# ## 同步是怎么做的
 #
-# ⚠️ 为什么用 `uses:` 调用而不是"推完 github-pages 等它自动触发"：
-#    用 `GITHUB_TOKEN` 推出去的提交**不会**触发其他工作流（GitHub 的防递归限制），
-#    而这里手上只有 `GITHUB_TOKEN`。所以让 deploy-pages.yml 开放 `workflow_call`、
-#    由本工作流**直接调用**它是唯一稳妥的做法。
+#   1. 把 main 合并进 github-pages
+#   2. **显式把部署目标写回 GitHub Pages**（scripts/set-deploy-target.mjs）
+#   3. 目标有变化就补一个提交，然后推送
 #
-# ⚠️ 自动合并**冲突时会失败**（不会静默丢弃改动）。看到红色的失败：
-#    在本地 `git fetch origin && git checkout github-pages && git merge origin/main`，
-#    解完冲突推到 main（或直接推 github-pages），后续就恢复正常。
-#    冲突几乎只会出现在 astro.config.mjs —— 保留 github-pages 的两个值即可：
-#      SITE_ORIGIN = 'https://rickyhe7.github.io'
-#      SITE_BASE   = '/RickyBlog'
+# 第 2 步绝对不能省。github-pages 是 main 的祖先时，第 1 步会**直接快进**，
+# github-pages 会被整个改写成 main 的内容 —— 包括 `SITE_BASE`（变成 '/'）。
+# 那样构建**照样成功**，但所有 `_astro/*` 路径都少掉 /RickyBlog 前缀，
+# Pages 站点会整片 404，而且 `check-subpath.mjs` 也会跟着读到错的前缀、检查反而通过。
+# 所以这里用脚本做精确替换，而不是指望合并算法保住那两行。
+#
+# ## 为什么要用 `uses:` 直接调用部署工作流
+#
+# 用 `GITHUB_TOKEN` 推出去的提交**不会**触发其他工作流（GitHub 的防递归限制），
+# 而这里手上只有 `GITHUB_TOKEN`。所以让 deploy-pages.yml 开放 `workflow_call`、
+# 由本工作流直接调用它是唯一稳妥的做法。
+#
+# ## 冲突了怎么办
+#
+# 正常情况**不会冲突**：github-pages 上只有「两个常量的差异」这一个自有改动，
+# main 的内容改动都能干净合并。万一真冲突，本工作流会**中止并以失败告终**
+# （不会静默丢改动）。本地解决：
+#   git fetch origin && git checkout github-pages && git merge origin/main
+#   node scripts/set-deploy-target.mjs pages   # 确保目标写回 Pages
+#   git commit && git push origin github-pages
 name: Sync main → github-pages
 
 on:
@@ -28,7 +39,7 @@ on:
   # 想在 Actions 页面手动补一次同步时用
   workflow_dispatch:
 
-# 需要 contents: write 才能把合并结果推回仓库
+# 需要 contents: write 才能把同步结果推回仓库
 permissions:
   contents: write
 
@@ -41,15 +52,15 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.merge.outputs.changed }}
+      changed: ${{ steps.sync.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
         with:
           # 合并需要完整历史，浅克隆会让 merge-base 算不出来
           fetch-depth: 0
 
-      - name: 把 main 合并进 github-pages
-        id: merge
+      - name: 同步 main 到 github-pages
+        id: sync
         run: |
           set -euo pipefail
 
@@ -57,17 +68,26 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git fetch --no-tags origin main github-pages
+          before="$(git rev-parse origin/github-pages)"
           git checkout -B github-pages origin/github-pages
 
+          # 1) 把 main 的内容带过来
           if ! git merge --no-edit origin/main; then
             git merge --abort || true
             echo "::error::main 与 github-pages 自动合并冲突，已中止（改动没有被丢弃）。"
             echo "::error::本地解决：git fetch origin && git checkout github-pages && git merge origin/main"
-            echo "::error::冲突通常只在 astro.config.mjs —— 保留 github-pages 的值：SITE_ORIGIN='https://rickyhe7.github.io'、SITE_BASE='/RickyBlog'。"
             exit 1
           fi
 
-          if [ "$(git rev-parse github-pages)" = "$(git rev-parse origin/github-pages)" ]; then
+          # 2) 把部署目标写回 GitHub Pages（脚本自带说明，见文件头）
+          node scripts/set-deploy-target.mjs pages
+
+          # 3) 目标变了就补一个提交 —— 首次同步、以及 main 动过配置时都会走到这里
+          if ! git diff --quiet; then
+            git commit -qam "chore(deploy): 固定部署目标为 GitHub Pages"
+          fi
+
+          if [ "$(git rev-parse github-pages)" = "$before" ]; then
             echo "github-pages 已经是最新，无需推送"
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else

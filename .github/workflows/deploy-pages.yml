@@ -49,6 +49,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # ⚠️ 必须显式指定 `github-pages`。
+          # 本工作流有两条触发路径：
+          #   1. push 到 github-pages —— 此时 github.ref 本来就是 github-pages，写了也对；
+          #   2. 被 sync-pages.yml 用 workflow_call 调用 —— 此时 github.ref 继承**调用方**的
+          #      `main`，不写 ref 就会检出 main（Cloudflare 那套配置、SITE_BASE='/'），
+          #      构建出的产物所有 `_astro/*` 都会少掉 /RickyBlog 前缀 → 线上整片 404，
+          #      而构建本身是成功的，很难一眼看出。
+          ref: github-pages
 
       - uses: actions/setup-node@v4
         with:
