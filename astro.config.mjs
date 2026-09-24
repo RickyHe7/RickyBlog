@@ -17,13 +17,22 @@ import tailwindcss from '@tailwindcss/vite';
  *                （地址形如 https://rickyhe7.github.io/RickyBlog/ → 填 '/RickyBlog'）；
  *                部署在根域名下就填 '/'。
  *
+ * ⚠️⚠️ **这两个常量是 `main` 与 `github-pages` 两条分支之间唯一的差异。**
+ *    `main`          = Cloudflare + 自有域名（base 为 '/'）
+ *    `github-pages`  = GitHub Pages 项目站点（base 为 '/RickyBlog'）
+ *
+ *    刻意维持「只差这两行」的形态：`main` 的改动会自动合并进 `github-pages`
+ *    （见 `.github/workflows/sync-pages.yml`），差异越小越不会冲突。
+ *    **不要**为了某一条分支的方便去改这个文件的其他部分 —— 那会给每次同步埋冲突。
+ *    真到了要改结构的时候，两条分支都得改同一份、同样的内容。
+ *
  * 为什么 base 必须交给 Astro 而不是自己到处拼字符串：Astro 用它给 `_astro/*`、
  * `pagefind/*` 那些**构建产物** URL 加前缀；而我们自己写的站内链接统一走
  * `src/lib/url.ts` 的 `withBase()`（它读的也是这个 base）。两边一致，
  * 于是同一份代码既能放根域名、也能放子路径 —— 换托管真的只改这里。
  */
-const SITE_ORIGIN = 'https://rickyhe7.github.io';
-const SITE_BASE = '/RickyBlog';
+const SITE_ORIGIN = 'https://blog.infinitest.cloud';
+const SITE_BASE = '/';
 
 /**
  * 去掉结尾斜杠后的子路径；部署在根路径时是空串（`'/'.replace(/\/+$/,'') === ''`）。
@@ -58,11 +67,11 @@ const SUBPATH = SITE_BASE.replace(/\/+$/, '');
 const CANONICAL_SITE = SITE_ORIGIN + SUBPATH;
 
 /**
- * 历史备注（本条分支已不用，留着免得以后翻不出去）：
+ * 备用地址（只作参考，**不写进 canonical**）：
  *   - `https://rickysblog.1174716217.workers.dev` —— Cloudflare Worker 默认域名，
  *     **中国大陆直连打不开**（DNS 污染）。
- *   - `https://blog.infinitest.cloud` —— 后来绑的自有域名，大陆可访问。
- *   两者都还留在 `main` 分支的配置里；本条 `github-pages` 分支改用 GitHub Pages。
+ *   - `https://rickyhe7.github.io/RickyBlog/` —— GitHub Pages 项目站点（`github-pages` 分支）。
+ *   上面的 SITE_ORIGIN / SITE_BASE 决定本次构建实际用哪一个。
  */
 
 /** 显式覆盖开关。优先级高于 CANONICAL_SITE，但必须主动设这个名字才会生效。 */

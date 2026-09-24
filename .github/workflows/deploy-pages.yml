@@ -4,6 +4,12 @@
 #    Settings → Pages → Build and deployment → Source 选 **GitHub Actions**
 #    （不要选 "Deploy from a branch"，本工作流走的是 Actions 那条路）
 #
+# ⚠️⚠️ 还要放行部署分支（这个坑很隐蔽）：
+#    Settings → Environments → github-pages → Deployment branches and tags
+#    必须把 **`github-pages`** 也加进去 —— 该环境的保护规则**默认只放行默认分支 `main`**，
+#    而本工作流跑在 `github-pages` 分支上。不放行的表现是：deploy 作业在初始化阶段
+#    就被拒，**一个步骤都不执行、日志端点还返回 BlobNotFound**，看起来像什么都没发生。
+#
 # 这条路的好处：不需要 gh-pages 分支、不需要把 dist 提交进仓库 ——
 # 每次推送后由 Actions 现场构建，产物作为 artifact 直接发布。
 #
@@ -15,10 +21,16 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      # 只监听这条分支；以后想直接部署 main，把这里换成 main 即可
+      # ⚠️ 这条分支由 `sync-pages.yml` 从 main 自动同步生成，**正常情况不需要手动推送**。
+      # 想在本地手动跑一次，用 Actions 页面的 "Run workflow"（下面的 workflow_dispatch）。
       - github-pages
-  # 也允许在 Actions 页面手动点一次（部署出问题时很方便）
+  # 允许在 Actions 页面手动点一次（部署出问题时很方便）
   workflow_dispatch:
+  # 允许被 sync-pages.yml 直接调用。
+  # ⚠️ 这里必须用 workflow_call，不能靠"推 github-pages 会自动触发本工作流"——
+  #    用 GITHUB_TOKEN 推的提交**不会**触发其他工作流（GitHub 的防递归限制），
+  #    而 sync-pages.yml 手上只有 GITHUB_TOKEN。
+  workflow_call:
 
 # GITHUB_TOKEN 的最小权限：读代码、写 Pages、拿 OIDC 令牌
 permissions:

@@ -1,0 +1,87 @@
+# 把 main 自动同步到 github-pages，并触发 Pages 部署
+#
+# 目的：**你只需要推 `main`**。
+#   main 推送 → 本工作流把 main 合并进 github-pages → 直接调用 deploy-pages.yml 发布。
+#   （Cloudflare 那边由它自己的 Git 集成监听 main，与本工作流无关、互不影响。）
+#
+# 为什么是「合并」而不是「cherry-pick 或整树覆盖」：
+#   两条分支的差异被刻意压到只剩 `astro.config.mjs` 里的两个常量
+#   （SITE_ORIGIN / SITE_BASE），所以正常的内容与功能改动都能干净合并过来。
+#
+# ⚠️ 为什么用 `uses:` 调用而不是"推完 github-pages 等它自动触发"：
+#    用 `GITHUB_TOKEN` 推出去的提交**不会**触发其他工作流（GitHub 的防递归限制），
+#    而这里手上只有 `GITHUB_TOKEN`。所以让 deploy-pages.yml 开放 `workflow_call`、
+#    由本工作流**直接调用**它是唯一稳妥的做法。
+#
+# ⚠️ 自动合并**冲突时会失败**（不会静默丢弃改动）。看到红色的失败：
+#    在本地 `git fetch origin && git checkout github-pages && git merge origin/main`，
+#    解完冲突推到 main（或直接推 github-pages），后续就恢复正常。
+#    冲突几乎只会出现在 astro.config.mjs —— 保留 github-pages 的两个值即可：
+#      SITE_ORIGIN = 'https://rickyhe7.github.io'
+#      SITE_BASE   = '/RickyBlog'
+name: Sync main → github-pages
+
+on:
+  push:
+    branches:
+      - main
+  # 想在 Actions 页面手动补一次同步时用
+  workflow_dispatch:
+
+# 需要 contents: write 才能把合并结果推回仓库
+permissions:
+  contents: write
+
+# 同一时间只跑一次同步，避免两次推送交错把 github-pages 推成中间状态
+concurrency:
+  group: sync-github-pages
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.merge.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 合并需要完整历史，浅克隆会让 merge-base 算不出来
+          fetch-depth: 0
+
+      - name: 把 main 合并进 github-pages
+        id: merge
+        run: |
+          set -euo pipefail
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch --no-tags origin main github-pages
+          git checkout -B github-pages origin/github-pages
+
+          if ! git merge --no-edit origin/main; then
+            git merge --abort || true
+            echo "::error::main 与 github-pages 自动合并冲突，已中止（改动没有被丢弃）。"
+            echo "::error::本地解决：git fetch origin && git checkout github-pages && git merge origin/main"
+            echo "::error::冲突通常只在 astro.config.mjs —— 保留 github-pages 的值：SITE_ORIGIN='https://rickyhe7.github.io'、SITE_BASE='/RickyBlog'。"
+            exit 1
+          fi
+
+          if [ "$(git rev-parse github-pages)" = "$(git rev-parse origin/github-pages)" ]; then
+            echo "github-pages 已经是最新，无需推送"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git push origin github-pages
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    # 只有真的推进了 github-pages 才重新部署，避免每次空跑一次 Pages 构建
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy-pages.yml
+    # 被调用的工作流不能放大权限，只能在这里授予（Pages 发布需要这三项）
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

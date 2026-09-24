@@ -1,6 +1,10 @@
 # 部署到 GitHub Pages
 
-> 本文件属于 **`github-pages` 分支**。`main` 分支走的是 Cloudflare，说明在 [DEPLOY.md](./DEPLOY.md)。
+> 这是**第二个**部署目标（镜像/备份）。主站是 Cloudflare + 自有域名 `blog.infinitest.cloud`，
+> 说明在 [DEPLOY.md](./DEPLOY.md)。
+>
+> ⚠️ **`github-pages` 分支由 `main` 自动同步生成，不要手动往里提交。**
+> 你只推 `main`，剩下的由 `.github/workflows/sync-pages.yml` 完成。
 
 ## 地址
 
@@ -10,25 +14,30 @@
 `https://<用户名>.github.io/<仓库名>/`。
 **这个子路径是本次改造唯一真正麻烦的地方**，见下面〈为什么要动那么多文件〉。
 
-## 一次性设置（都在浏览器里，约 2 分钟）
+## 一次性设置（✅ 2026-09-24 已全部配好，无需再做）
 
-1. 推送这条分支：
+留着是为了以后重建仓库时有据可查：
 
-   ```bash
-   git push -u origin github-pages
-   ```
-
-2. 仓库 → **Settings** → 左侧 **Pages**
-
-3. **Build and deployment** → **Source** 选 **`GitHub Actions`**
+1. **Settings → Pages → Build and deployment → Source** 选 **`GitHub Actions`**
 
    > ⚠️ 不要选 "Deploy from a branch" —— 那是另一条路（要往 `gh-pages` 分支提交构建产物），
    > 本仓库用的是工作流方式，`dist` 不进仓库。
+   > 选错的后果不是报错，而是**地址 404**：那条路会去分支根目录找 `index.html`。
 
-4. 切到 **Actions** 标签，能看到 `Deploy to GitHub Pages` 已经在跑。
-   跑完（约 1–2 分钟）地址就活了。
+2. **Settings → Environments → `github-pages` → Deployment branches and tags**
+   必须把 **`github-pages`** 加进去。
 
-之后**每次推送到这条分支**都会自动重新构建并发布；
+   > ⚠️⚠️ **这个坑最隐蔽，务必记住。** 该环境的保护规则**默认只放行默认分支 `main`**，
+   > 而部署工作流跑在 `github-pages` 分支上。没放行的表现是：
+   > **deploy 作业在初始化阶段就被拒 —— 一个步骤都不执行，日志端点还返回 `BlobNotFound`**，
+   > 看起来就像"什么都没发生"。
+   > 排查入口：`GET /repos/{owner}/{repo}/environments` 看 `protected_branches`
+   > / `custom_branch_policies`，再看 `.../environments/github-pages/deployment-branch-policies`。
+   > 修复：向 `.../deployment-branch-policies` POST `{"name":"github-pages","type":"branch"}`。
+
+3. 推送后到 **Actions** 标签确认 `Deploy to GitHub Pages` 跑绿（约 1–2 分钟）。
+
+之后**每次推送到 `main`** 都会自动同步并重新发布；
 也可以在 Actions 页面手动 `Run workflow`（部署出问题时很好用）。
 
 ## 为什么要动那么多文件（子路径的代价）
@@ -85,19 +94,49 @@
 - **推荐**：把 GitHub Pages 当**镜像 / 备份**，主站继续用自有域名。
   两个地址同时在线，国内走域名、境外走 github.io，成本几乎为零。
 
-## 和 Cloudflare 怎么共存
+## 和 Cloudflare 怎么共存（日常操作）
 
-两条分支各自独立、互不影响：
+**你只需要推 `main`。** 什么都不用切换、不用记两条分支。
 
-```bash
-git switch main            # 回到 Cloudflare 那套配置（自有域名）
-git switch github-pages    # 回到 GitHub Pages 那套配置
+```
+git push origin main
+   │
+   ├─ Cloudflare 的 Git 集成监听到 main → 构建 → 发布 blog.infinitest.cloud
+   │
+   └─ Actions: sync-pages.yml
+        ├─ 把 main 合并进 github-pages，推上去
+        └─ 直接调用 deploy-pages.yml → 构建 → 发布 rickyhe7.github.io/RickyBlog/
 ```
 
-要注意的是：**内容改动得落到两条分支上**，否则两边会慢慢分叉。
-这次改造刻意把配置差异压到最小（基本只有 `astro.config.mjs` 的两个常量、
-`.github/workflows/`、`public/.nojekyll`），就是为了让同步不至于变成负担。
-哪天决定只留一边，把另一条分支删掉即可。
+为什么是 `workflow_call` 直接调用、而不是"等推送自动触发"：
+**用 `GITHUB_TOKEN` 推出去的提交不会触发其他工作流**（GitHub 的防递归限制），
+所以推完 github-pages 那一步不会自动唤起部署 —— 直接调用是唯一稳妥的做法。
+
+### 冲突了怎么办
+
+正常情况下**不会冲突** —— 两条分支的差异只有 `astro.config.mjs` 的两个常量，
+`main` 上的文章 / 样式 / 组件改动都能干净合并过来。
+
+万一真冲突了（比如哪天你为了 Pages 特意改了配置结构），`sync-pages.yml` 会
+**中止合并并以失败告终**，不会静默丢改动。本地照这样做：
+
+```bash
+git fetch origin
+git checkout github-pages
+git merge origin/main
+# 解冲突：astro.config.mjs 保留 github-pages 的值 ——
+#   SITE_ORIGIN = 'https://rickyhe7.github.io'
+#   SITE_BASE   = '/RickyBlog'
+git commit
+git push origin github-pages     # 推上去会自动触发 Pages 部署
+git checkout main
+```
+
+### 想只留一个地址
+
+删掉另一条分支 + 对应的工作流即可。若只留 GitHub Pages，
+记得把 `astro.config.mjs` 的 `SITE_BASE` 改成 `'/RickyBlog'` 保持现状；
+若只留 Cloudflare，直接删 `github-pages` 分支和 `.github/workflows/` 下两个 Pages 工作流。
 
 ## 常见问题
 

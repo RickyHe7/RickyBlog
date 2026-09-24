@@ -46,7 +46,8 @@ let total = 0;
 
 for (const file of htmlFiles) {
   const text = readFileSync(file, 'utf8');
-  for (const [, attr, value] of text.matchAll(ATTR)) {
+  // 只关心值，属性名（href / src）在这里用不上
+  for (const [, , value] of text.matchAll(ATTR)) {
     if (!value.startsWith('/') || value.startsWith('//')) continue;
     total += 1;
     seen.set(value, (seen.get(value) ?? 0) + 1);

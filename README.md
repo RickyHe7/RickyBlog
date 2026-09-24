@@ -2,7 +2,7 @@
 
 个人博客。记录小技巧、读书笔记和生活。
 
-**技术栈**：Astro 7 · Tailwind CSS 4 · MDX · Pagefind · Cloudflare Pages
+**技术栈**：Astro 7 · Tailwind CSS 4 · MDX · Pagefind · Cloudflare Workers + GitHub Pages
 **特点**：纯静态、默认零客户端 JS、秋日落叶主题、暗色模式、全站可键盘操作
 
 ---
@@ -35,7 +35,7 @@ npm run check     # 类型与模板检查（astro check）
 | --- | --- | --- |
 | 手机测移动端布局 | `npm run preview:lan` | 同一 Wi-Fi 下访问 `http://<你的内网IP>:4321` |
 | 临时给同事看一眼 | `npx --yes cloudflared tunnel --url http://localhost:4321` | 临时公网 https 地址 |
-| **正式上线** | `git push` | Cloudflare Pages 自动构建并发布 |
+| **正式上线** | `git push`（推 `main`） | Cloudflare 与 GitHub Pages **两个地址一起**自动构建发布 |
 
 完整步骤（GitHub 仓库设置、Cloudflare 构建配置、环境变量清单、域名绑定、回滚）见 **[DEPLOY.md](./DEPLOY.md)**。
 
@@ -176,13 +176,28 @@ npm run preview
 
 ## 部署
 
-> ### 📍 你现在在 `github-pages` 分支
+> ### 🔀 两条分支、两个目标 —— 但**你只需要推 `main`**
 >
-> 这条分支部署到 **GitHub Pages**，地址是 **https://rickyhe7.github.io/RickyBlog/**。
-> 完整说明见 **[DEPLOY-GITHUB-PAGES.md](./DEPLOY-GITHUB-PAGES.md)**（含一次性设置、
-> 子路径为什么改动了那么多文件、以及**大陆访问会退步**这一条）。
+> | 分支 | 部署到 | 地址 |
+> | --- | --- | --- |
+> | **`main`** | Cloudflare Workers（Git 集成） | **https://blog.infinitest.cloud** |
+> | **`github-pages`** | GitHub Pages（Actions） | https://rickyhe7.github.io/RickyBlog/ |
 >
-> 下面这段是 `main` 分支的 **Cloudflare + 自有域名**方案，留着备查。
+> **`github-pages` 是自动生成的**：往 `main` 推一次，`.github/workflows/sync-pages.yml`
+> 会先把 `main` 合并进 `github-pages`，再调用 Pages 的部署工作流。两个地址一起更新，
+> 你不用去管第二条分支。
+>
+> 能这么做的前提是**两条分支的差异被压到只剩 `astro.config.mjs` 里的两个常量**
+> （`SITE_ORIGIN` / `SITE_BASE`）—— 所以日常的文章、样式、组件改动都能干净合并。
+> ⚠️ 别为了某一条分支的方便去改这个文件的其他部分，那会给每次同步埋冲突。
+>
+> - 同步出现合并冲突时 Actions 会**报红**（不会静默丢改动）。本地
+>   `git checkout github-pages && git merge main` 解完推上来即可，之后自动恢复正常
+> - `github-pages` 的一次性设置（Source 选 `GitHub Actions`、把 `github-pages` 加进
+>   环境 `github-pages` 的部署分支白名单）**已经配好**，说明见
+>   **[DEPLOY-GITHUB-PAGES.md](./DEPLOY-GITHUB-PAGES.md)**
+> - ⚠️ `*.github.io` 在大陆同样不稳（DNS 污染 + SNI 阻断），**建议当镜像/备份**，
+>   主站继续用自有域名
 
 走 **Cloudflare Workers · Git 集成**：推到 GitHub，Cloudflare 自动构建发布。
 
