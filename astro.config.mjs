@@ -31,8 +31,8 @@ import tailwindcss from '@tailwindcss/vite';
  * `src/lib/url.ts` 的 `withBase()`（它读的也是这个 base）。两边一致，
  * 于是同一份代码既能放根域名、也能放子路径 —— 换托管真的只改这里。
  */
-const SITE_ORIGIN = 'https://blog.infinitest.cloud';
-const SITE_BASE = '/';
+const SITE_ORIGIN = 'https://rickyhe7.github.io';
+const SITE_BASE = '/RickyBlog';
 
 /**
  * 去掉结尾斜杠后的子路径；部署在根路径时是空串（`'/'.replace(/\/+$/,'') === ''`）。
